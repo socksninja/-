@@ -121,7 +121,7 @@ export default function Home() {
   function startMove() {
     if (status !== 'playing') return;
     if (movedThisTurn) { addLog('本回合已经行动过移动。'); return; }
-    setSelected(null); setMoveMode(true); addLog('选择一个落点移动 2 格；移动后获得 1 层动能。');
+    setSelected(null); setMoveMode(true); addLog('选择一个落点移动 2 格；移动后获得 1 层蓄力。');
   }
   function blocked(q, r) {
     return (player.q === q && player.r === r) || enemies.some((enemy) => enemy.hp > 0 && enemy.q === q && enemy.r === r);
@@ -155,7 +155,7 @@ export default function Home() {
       const target = { q, r };
       if (movedThisTurn || dist(player, target) > 2 || blocked(q, r)) { addLog('这个落点不可用。'); return; }
       setPlayer((p) => ({ ...p, q, r, momentum: Math.min(2, p.momentum + 1), charge: 0 }));
-      setMovedThisTurn(true); setMoveMode(false); addLog(`移动到 (${q + 1},${r + 1})，动能 +1。`); return;
+      setMovedThisTurn(true); setMoveMode(false); addLog(`移动到 (${q + 1},${r + 1})，蓄力 +1。`); return;
     }
     if (!selected) return;
     const selectedCard = selected;
@@ -181,7 +181,7 @@ export default function Home() {
       nextEnemies = nextEnemies.map((enemy) => enemy.id === target.id ? { ...enemy, hp: enemy.hp - 3 } : enemy);
       setEnemies(nextEnemies); setHazards((current) => current.filter((h) => !(h.q === target.q && h.r === target.r))); addLog('引燃：额外 3 伤害并清除火焰。');
     }
-    finish(selectedCard, `${target.name} 受到 ${amount} 伤害。`);
+    finish(selectedCard, `${target.id === 'a' ? '敌人' : '目标'} 受到 ${amount} 伤害。`);
     checkVictory(nextEnemies, player.hp);
   }
   function endTurn() {
@@ -240,17 +240,17 @@ export default function Home() {
               return <button key={key(c.q, c.r)} className={`hex row-${row} ${fire ? 'fire ' : ''}${validMove ? 'movable ' : ''}${targetable ? 'targetable ' : ''}`} onClick={() => cell(c.q, c.r)}>
                 <span className="coord">{c.q + 1},{c.r + 1}</span>
                 {fire && <span className="hazardMark">✦</span>}
-                {isPlayer && <div className="unit hero"><span>◆</span><small>你</small></div>}
-                {enemy && <div className={`unit ${enemy.kind}`}><span>{enemy.kind === 'marauder' ? '⚔' : enemy.kind === 'warden' ? '◈' : '✦'}</span><small>{enemy.name} · {Math.max(0, enemy.hp)}/{enemy.max}</small><em>{intentFor(enemy, player).icon} {intentFor(enemy, player).type}</em></div>}
+                {isPlayer && <div className="unit hero"><span>◆</span><b className="hpLabel">{player.hp}/{player.max}</b></div>}
+                {enemy && <div className={`unit ${enemy.kind}`}><span>{enemy.kind === 'marauder' ? '⚔' : enemy.kind === 'warden' ? '◈' : '✦'}</span><b className="hpLabel">{Math.max(0, enemy.hp)}/{enemy.max}</b><em>{intentFor(enemy, player).icon} {intentFor(enemy, player).type}</em></div>}
               </button>;
             })}
           </div>
-          <div className="legend">绿色 = 可移动 · 橙色 = 火焰 · 敌人头顶 = 下一行动 · 移动为常驻行动，每回合一次</div>
+          <div className="legend">绿色 = 可移动 · 橙色 = 火焰 · 敌人上方 = 下一行动 · 移动为常驻行动，每回合一次</div>
         </section>
         <aside className="side">
-          <div className="panel"><div className="panelTitle">OBJECTIVE</div><div className="objective">击败全部敌人 · {alive} 名存活</div><div className="deckMeta">构筑新增 {extraIds.length} 张 · 动能 {player.momentum}/2 · 蓄势 {player.charge}/4</div></div>
+          <div className="panel"><div className="panelTitle">OBJECTIVE</div><div className="objective">击败全部敌人 · {alive} 名存活</div><div className="deckMeta">构筑新增 {extraIds.length} 张 · 蓄力 {player.momentum}/2 · 蓄势 {player.charge}/4</div></div>
           <div className="panel"><div className="panelTitle">COMBAT LOG</div><div className="log">{log.map((item, i) => <div key={`${item}-${i}`}>{item}</div>)}</div></div>
-          <div className="actionRow"><button className={`moveAction ${movedThisTurn ? 'used' : ''}`} onClick={startMove} disabled={status !== 'playing' || movedThisTurn}>移动 2 格 <span>{movedThisTurn ? '已用' : '常驻'}</span></button><button className="end" onClick={endTurn} disabled={status !== 'playing'}>结束回合 →</button></div>
+          <div className="actionRow"><button className={`moveAction ${movedThisTurn ? 'used' : ''}`} onClick={startMove} disabled={status !== 'playing' || movedThisTurn} aria-label="移动 2 格"><span>移动</span></button><button className="end" onClick={endTurn} disabled={status !== 'playing'}>结束回合 →</button></div>
         </aside>
       </main>
       <section className="handPanel"><div className="handTitle"><div><div className="panelTitle">HAND</div><h2>你的手牌 <span>{cardsState.hand.length} 张</span></h2></div><div className="deckMeta">牌堆 {cardsState.deck.length} · 弃牌 {cardsState.discard.length}</div></div><div className="hand">{cardsState.hand.map((id, index) => { const c = card(id); return <button key={`${id}-${index}`} className={`card ${selected?.id === id ? 'active' : ''}`} disabled={status !== 'playing' || c.cost > energy} onClick={() => play(c)}><div className="cardTop"><span className="tag">{c.tag}</span><b>{c.cost}</b></div><h3>{c.name}</h3><p>{c.text}</p></button>; })}</div></section>
