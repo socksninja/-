@@ -27,6 +27,25 @@ jobs:
       - name: Build static site
         run: npm run build
 
+      - name: Check deployment secrets
+        env:
+          TENCENT_CLOUD_SECRET_ID: ${{ secrets.TENCENT_CLOUD_SECRET_ID }}
+          TENCENT_CLOUD_SECRET_KEY: ${{ secrets.TENCENT_CLOUD_SECRET_KEY }}
+          COS_BUCKET: ${{ secrets.COS_BUCKET }}
+          COS_REGION: ${{ secrets.COS_REGION }}
+        run: |
+          missing=0
+          for name in TENCENT_CLOUD_SECRET_ID TENCENT_CLOUD_SECRET_KEY COS_BUCKET COS_REGION; do
+            if [ -z "${!name}" ]; then
+              echo "::error::GitHub Actions secret $name is missing or empty"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          echo "All four Tencent COS secrets are present."
+
       - name: Verify Tencent COS access
         env:
           TENCENT_CLOUD_SECRET_ID: ${{ secrets.TENCENT_CLOUD_SECRET_ID }}
