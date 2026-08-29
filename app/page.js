@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 const W = 8;
 const H = 6;
@@ -33,13 +33,17 @@ function dist(a, b) {
   );
 }
 
-function shuffle(a) {
-  const x = [...a];
+function shuffle(items) {
+  const x = [...items];
   for (let i = x.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
     [x[i], x[j]] = [x[j], x[i]];
   }
   return x;
+}
+
+function makeDeck() {
+  return shuffle(cards.flatMap((card) => [card.id, card.id, card.id]));
 }
 
 const neighborDirs = [
@@ -61,51 +65,39 @@ function stepToward(from, target, occupied) {
   return candidates[0] && dist(candidates[0], target) < dist(from, target) ? candidates[0] : from;
 }
 
+function drawFromState(state, amount) {
+  let deck = [...state.deck];
+  let discard = [...state.discard];
+  const hand = [...state.hand];
+
+  for (let i = 0; i < amount; i += 1) {
+    if (!deck.length) {
+      deck = shuffle(discard);
+      discard = [];
+    }
+    if (!deck.length) break;
+    hand.push(deck.pop());
+  }
+
+  return { deck, hand, discard };
+}
+
 export default function Home() {
   const [player, setPlayer] = useState({ q: 1, r: 3, hp: 20, max: 20, armor: 0 });
   const [enemies, setEnemies] = useState(initialEnemies);
   const [hazards, setHazards] = useState([]);
-  const [deck, setDeck] = useState(() => shuffle(cards.flatMap((c) => [c.id, c.id, c.id, c.kind === 'burst' ? c.id : ''])) .filter(Boolean));
-  const [hand, setHand] = useState([]);
-  const [discard, setDiscard] = useState([]);
+  const [cardsState, setCardsState] = useState(() => {
+    const deck = makeDeck();
+    return { deck: deck.slice(0, -5), hand: deck.slice(-5), discard: [] };
+  });
   const [energy, setEnergy] = useState(3);
   const [turn, setTurn] = useState(1);
   const [selected, setSelected] = useState(null);
-  const [log, setLog] = useState(['战斗开始。敌人会在结束回合后追击。']);
+  const [log, setLog] = useState(['战斗开始。5 张起始手牌已准备。']);
   const [status, setStatus] = useState('playing');
 
-  useEffect(() => {
-    draw(5);
-  }, []);
-
-  function draw(n) {
-    setHand((h) => {
-      const hh = [...h];
-      let d = [...deck];
-      let dis = [...discard];
-      for (let i = 0; i < n; i += 1) {
-        if (!d.length) {
-          d = shuffle(dis);
-          dis = [];
-        }
-        if (!d.length) break;
-        hh.push(d.pop());
-      }
-      setDeck(d);
-      setDiscard(dis);
-      return hh;
-    });
-  }
-
-  function addLog(s) {
-    setLog((l) => [s, ...l].slice(0, 8));
-  }
-
-  function blocked(q, r, movingEnemyId = null) {
-    return (
-      enemies.some((e) => e.id !== movingEnemyId && e.q === q && e.r === r && e.hp > 0) ||
-      (player.q === q && player.r === r)
-    );
+  function addLog(message) {
+    setLog((current) => [message, ...current].slice(0, 8));
   }
 
   function spend(card) {
@@ -113,21 +105,38 @@ export default function Home() {
       addLog('能量不足。');
       return false;
     }
-    setEnergy((e) => e - card.cost);
+    setEnergy((current) => current - card.cost);
     return true;
   }
 
-  function finish(card, msg) {
-    setHand((h) => {
-      const i = h.findIndex((x) => x === card.id);
-      if (i < 0) return h;
-      const next = [...h];
-      next.splice(i, 1);
-      setDiscard((d) => [...d, card.id]);
-      return next;
+  function discardCard(cardId) {
+    setCardsState((state) => {
+      const index = state.hand.findIndex((id) => id === cardId);
+      if (index < 0) return state;
+      const hand = [...state.hand];
+      hand.splice(index, 1);
+      return { ...state, hand, discard: [...state.discard, cardId] };
     });
-    addLog(msg);
+  }
+
+  function draw(amount) {
+    setCardsState((state) => drawFromState(state, amount));
+  }
+
+  function checkVictory(nextEnemies, nextHp) {
+    if (nextEnemies.length && nextEnemies.every((enemy) => enemy.hp <= 0)) {
+      setStatus('won');
+      addLog('战斗胜利。');
+    } else if (nextHp <= 0) {
+      setStatus('lost');
+      addLog('你倒下了。');
+    }
+  }
+
+  function finishCard(card, message) {
+    discardCard(card.id);
     setSelected(null);
+    addLog(message);
   }
 
   function play(card) {
@@ -142,85 +151,102 @@ export default function Home() {
 
     if (card.kind === 'guard') {
       if (!spend(card)) return;
-      setPlayer((p) => ({ ...p, armor: p.armor + 5 }));
-      finish(card, '获得 5 护甲。');
+      setPlayer((current) => ({ ...current, armor: current.armor + 5 }));
+      finishCard(card, '获得 5 护甲。');
       return;
     }
 
     if (card.kind === 'draw') {
       if (!spend(card)) return;
-      finish(card, '专注：抽 2 张。');
-      setTimeout(() => draw(2), 0);
+      finishCard(card, '专注：抽 2 张。');
+      draw(2);
       return;
     }
 
     if (card.kind === 'burst') {
       if (!spend(card)) return;
-      const damaged = enemies.filter((e) => e.hp > 0 && hazards.some((h) => dist(h, e) <= 1));
-      setEnemies((es) => es.map((e) => (damaged.some((x) => x.id === e.id) ? { ...e, hp: e.hp - 4 } : e)));
+      const nextEnemies = enemies.map((enemy) =>
+        hazards.some((hazard) => dist(hazard, enemy) <= 1)
+          ? { ...enemy, hp: enemy.hp - 4 }
+          : enemy,
+      );
+      const hits = nextEnemies.filter((enemy, index) => enemy.hp !== enemies[index].hp).length;
+      setEnemies(nextEnemies);
       setHazards([]);
-      finish(card, `爆燃：${damaged.length ? `命中 ${damaged.length} 个目标。` : '没有命中目标。'}`);
-      checkVictory(enemies.map((e) => damaged.some((x) => x.id === e.id) ? { ...e, hp: e.hp - 4 } : e), player.hp);
+      finishCard(card, `爆燃：${hits ? `命中 ${hits} 个目标。` : '没有命中目标。'}`);
+      checkVictory(nextEnemies, player.hp);
       return;
     }
 
     if (card.kind === 'aoe') {
       if (!spend(card)) return;
-      const nextEnemies = enemies.map((e) => (dist(player, e) <= 2 ? { ...e, hp: e.hp - 3 } : e));
+      const nextEnemies = enemies.map((enemy) =>
+        dist(player, enemy) <= 2 ? { ...enemy, hp: enemy.hp - 3 } : enemy,
+      );
       setEnemies(nextEnemies);
-      finish(card, '震荡：范围内敌人受到 3 伤害。');
+      finishCard(card, '震荡：范围内敌人受到 3 伤害。');
       checkVictory(nextEnemies, player.hp);
     }
+  }
+
+  function blocked(q, r) {
+    return (
+      enemies.some((enemy) => enemy.q === q && enemy.r === r && enemy.hp > 0) ||
+      (player.q === q && player.r === r)
+    );
   }
 
   function cell(q, r) {
     if (!selected || status !== 'playing') return;
-    const c = selected;
+    const card = selected;
 
-    if (c.kind === 'move' || c.kind === 'dash') {
-      const d = dist(player, { q, r });
-      const max = c.kind === 'dash' ? 4 : 2;
-      if (d > max || blocked(q, r)) {
+    if (card.kind === 'move' || card.kind === 'dash') {
+      const distance = dist(player, { q, r });
+      const maxDistance = card.kind === 'dash' ? 4 : 2;
+      if (distance > maxDistance || blocked(q, r)) {
         addLog('这个格子到不了。');
         return;
       }
-      const pathHit = c.kind === 'dash' && enemies.some((e) => e.hp > 0 && dist(e, { q, r }) === 1);
-      const nextEnemies = pathHit ? enemies.map((e) => (e.hp > 0 && dist(e, { q, r }) === 1 ? { ...e, hp: e.hp - 2 } : e)) : enemies;
-      setPlayer((p) => ({ ...p, q, r }));
+
+      const nextEnemies = card.kind === 'dash'
+        ? enemies.map((enemy) =>
+            enemy.hp > 0 && dist(enemy, { q, r }) === 1
+              ? { ...enemy, hp: enemy.hp - 2 }
+              : enemy,
+          )
+        : enemies;
+      const hit = nextEnemies.some((enemy, index) => enemy.hp !== enemies[index].hp);
+
+      setPlayer((current) => ({ ...current, q, r }));
       setEnemies(nextEnemies);
-      finish(c, `移动到 (${q + 1},${r + 1})${pathHit ? '，冲刺震击造成 2 伤害。' : '。'}`);
+      finishCard(card, `移动到 (${q + 1},${r + 1})${hit ? '，冲刺震击造成 2 伤害。' : '。'}`);
       checkVictory(nextEnemies, player.hp);
       return;
     }
 
-    const t = enemies.find((e) => e.q === q && e.r === r && e.hp > 0);
-    if (!t) {
+    const target = enemies.find((enemy) => enemy.q === q && enemy.r === r && enemy.hp > 0);
+    if (!target) {
       addLog('请选择敌人。');
       return;
     }
-    if (c.kind === 'attack' && dist(player, t) !== 1) {
+    if (card.kind === 'attack' && dist(player, target) !== 1) {
       addLog('裂斩只能攻击相邻目标。');
       return;
     }
 
-    const amount = c.kind === 'attack' ? 5 : 3;
-    const nextEnemies = enemies.map((e) => (e.id === t.id ? { ...e, hp: e.hp - amount } : e));
+    const amount = card.kind === 'attack' ? 5 : 3;
+    const nextEnemies = enemies.map((enemy) =>
+      enemy.id === target.id ? { ...enemy, hp: enemy.hp - amount } : enemy,
+    );
     setEnemies(nextEnemies);
-    if (c.kind === 'attack2') {
-      setHazards((h) => [...h.filter((x) => !(x.q === t.q && x.r === t.r)), { q: t.q, r: t.r }]);
+    if (card.kind === 'attack2') {
+      setHazards((current) => [
+        ...current.filter((hazard) => !(hazard.q === target.q && hazard.r === target.r)),
+        { q: target.q, r: target.r },
+      ]);
     }
-    finish(c, `${t.name} 受到 ${amount} 伤害。`);
+    finishCard(card, `${target.name} 受到 ${amount} 伤害。`);
     checkVictory(nextEnemies, player.hp);
-  }
-
-  function checkVictory(nextEnemies, nextHp) {
-    if (nextEnemies.length && nextEnemies.every((e) => e.hp <= 0)) {
-      setStatus('won');
-      addLog('战斗胜利。');
-    } else if (nextHp <= 0) {
-      setStatus('lost');
-      addLog('你倒下了。');
-    }
   }
 
   function endTurn() {
@@ -229,46 +255,55 @@ export default function Home() {
 
     const occupied = new Set([key(player.q, player.r)]);
     const moved = enemies
-      .filter((e) => e.hp > 0)
+      .filter((enemy) => enemy.hp > 0)
       .reduce((acc, enemy) => {
-        const currentOccupied = new Set([...occupied, ...acc.map((x) => key(x.q, x.r))]);
+        const currentOccupied = new Set([
+          ...occupied,
+          ...acc.map((item) => key(item.q, item.r)),
+        ]);
         const next = stepToward(enemy, player, currentOccupied);
-        if (next.q !== enemy.q || next.r !== enemy.r) {
-          addLog(`${enemy.name} 向你逼近。`);
-        }
+        if (next.q !== enemy.q || next.r !== enemy.r) addLog(`${enemy.name} 向你逼近。`);
         return [...acc, { ...enemy, ...next }];
       }, []);
 
-    const damage = moved.reduce((sum, e) => (dist(player, e) === 1 ? sum + (e.kind === 'warden' ? 2 : 3) : sum), 0);
-    const blockedDamage = Math.min(damage, player.armor);
+    const damage = moved.reduce(
+      (sum, enemy) => sum + (dist(player, enemy) === 1 ? (enemy.kind === 'warden' ? 2 : 3) : 0),
+      0,
+    );
+    const armorBlocked = Math.min(damage, player.armor);
     const hpLoss = Math.max(0, damage - player.armor);
     const nextHp = Math.max(0, player.hp - hpLoss);
 
-    setEnemies((es) => es.map((e) => moved.find((m) => m.id === e.id) || e));
-    setPlayer((p) => ({ ...p, hp: nextHp, armor: 0 }));
-    setTurn((t) => t + 1);
+    setEnemies((current) => current.map((enemy) => moved.find((item) => item.id === enemy.id) || enemy));
+    setPlayer((current) => ({ ...current, hp: nextHp, armor: 0 }));
+    setTurn((current) => current + 1);
     setEnergy(3);
+
     addLog(
       damage
-        ? `敌人行动：造成 ${damage} 伤害${blockedDamage ? `，护甲抵消 ${blockedDamage}。` : '。'}`
+        ? `敌人行动：造成 ${damage} 伤害${armorBlocked ? `，护甲抵消 ${armorBlocked}。` : '。'}`
         : '敌人行动：未造成伤害。',
     );
+
     if (nextHp <= 0) {
       setStatus('lost');
       return;
     }
 
-    const extraDraw = hand.length === 0 ? 2 : 1;
-    setTimeout(() => draw(extraDraw), 0);
-    if (extraDraw === 2) addLog('手牌耗尽：额外抽 1 张。');
+    const amount = cardsState.hand.length === 0 ? 2 : 1;
+    draw(amount);
+    if (amount === 2) addLog('手牌耗尽：额外抽 1 张。');
+  }
+
+  function restart() {
+    window.location.reload();
   }
 
   const cells = useMemo(
-    () => Array.from({ length: W * H }, (_, i) => ({ q: i % W, r: Math.floor(i / W) })),
+    () => Array.from({ length: W * H }, (_, index) => ({ q: index % W, r: Math.floor(index / W) })),
     [],
   );
-
-  const alive = enemies.filter((e) => e.hp > 0).length;
+  const alive = enemies.filter((enemy) => enemy.hp > 0).length;
   const objective = status === 'won' ? '战斗胜利' : status === 'lost' ? '战斗失败' : '击败全部敌人';
 
   return (
@@ -290,13 +325,13 @@ export default function Home() {
         <section className="boardWrap">
           <div className="board">
             {cells.map((c) => {
-              const enemy = enemies.find((x) => x.q === c.q && x.r === c.r && x.hp > 0);
+              const enemy = enemies.find((item) => item.q === c.q && item.r === c.r && item.hp > 0);
               const isPlayer = player.q === c.q && player.r === c.r;
-              const fire = hazards.some((h) => h.q === c.q && h.r === c.r);
-              const d = dist(player, c);
+              const fire = hazards.some((hazard) => hazard.q === c.q && hazard.r === c.r);
               const targetingMove = selected && ['move', 'dash'].includes(selected.kind);
-              const validMove = targetingMove && d <= (selected.kind === 'dash' ? 4 : 2) && !blocked(c.q, c.r);
+              const validMove = targetingMove && dist(player, c) <= (selected.kind === 'dash' ? 4 : 2) && !blocked(c.q, c.r);
               const validTarget = selected && ['attack', 'attack2'].includes(selected.kind) && enemy;
+
               return (
                 <button
                   key={key(c.q, c.r)}
@@ -307,7 +342,7 @@ export default function Home() {
                   {enemy && (
                     <span className={`unit ${enemy.kind}`}>
                       {enemy.kind === 'warden' ? '◆' : '✦'}
-                      <small>{Math.max(0, enemy.hp)}/{enemy.max}</small>
+                      <small>{Math.max(0, enemy.hp)}</small>
                     </span>
                   )}
                   <span className="coord">{String.fromCharCode(65 + c.q)}{c.r + 1}</span>
@@ -315,40 +350,44 @@ export default function Home() {
               );
             })}
           </div>
-          <div className="legend">◆ 守卫者　 ✦ 掠夺者　 🔥 火焰地形　 · 高亮格=当前可选目标</div>
+          <div className="legend">◆ 守卫者　 ✦ 掠夺者　 🔥 火焰地形</div>
         </section>
 
         <aside className="side">
           <div className="panel">
             <div className="panelTitle">当前目标</div>
-            <div className="objective">{objective}<br /><span>{alive} 个单位存活 · 敌人会追击</span></div>
+            <div className="objective">
+              {objective}<br />
+              <span>{alive} 个单位存活</span>
+            </div>
           </div>
+
           <div className="panel">
             <div className="panelTitle">战斗日志</div>
-            <div className="log">{log.map((x, i) => <div key={`${x}-${i}`}>{x}</div>)}</div>
+            <div className="log">{log.map((message, index) => <div key={`${message}-${index}`}>{message}</div>)}</div>
           </div>
-          <button className="end" onClick={endTurn} disabled={status !== 'playing'}>
-            {status === 'playing' ? '结束回合 →' : '重新开始 ↻'}
-          </button>
-          {status !== 'playing' && <button className="end" onClick={() => location.reload()}>重新开始战斗</button>}
+
+          {status === 'playing' ? (
+            <button className="end" onClick={endTurn}>结束回合 →</button>
+          ) : (
+            <button className="end" onClick={restart}>重新开始 ↻</button>
+          )}
         </aside>
       </main>
 
       <section className="handPanel">
         <div className="handTitle">
-          <div><span className="eyebrow">DECKBUILDING</span><h2>手牌 <span>{hand.length}</span></h2></div>
-          <div className="deckMeta">牌库 {deck.length} · 弃牌 {discard.length}</div>
+          <div>
+            <span className="eyebrow">DECKBUILDING</span>
+            <h2>手牌 <span>{cardsState.hand.length}</span></h2>
+          </div>
+          <div className="deckMeta">牌库 {cardsState.deck.length} · 弃牌 {cardsState.discard.length}</div>
         </div>
         <div className="hand">
-          {hand.map((id, i) => {
-            const card = cards.find((x) => x.id === id);
+          {cardsState.hand.map((id, index) => {
+            const card = cards.find((item) => item.id === id);
             return (
-              <button
-                className={`card ${selected?.id === card.id ? 'active' : ''}`}
-                key={`${id}-${i}`}
-                onClick={() => play(card)}
-                disabled={energy < card.cost || status !== 'playing'}
-              >
+              <button className={`card ${selected?.id === card.id ? 'active' : ''}`} key={`${id}-${index}`} onClick={() => play(card)}>
                 <div className="cardTop"><span className="tag">{card.tag}</span><b>{card.cost}</b></div>
                 <h3>{card.name}</h3>
                 <p>{card.text}</p>
