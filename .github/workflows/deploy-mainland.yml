@@ -88,4 +88,4 @@ jobs:
           remote_path: /
           clean: true
 
-# Trigger after confirmed repository secrets are refreshed.
+# Retrigger deployment after correcting COS bucket configuration.
