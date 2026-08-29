@@ -88,4 +88,4 @@ jobs:
           remote_path: /
           clean: true
 
-# Retry deployment after rotating Tencent credentials.
+# Trigger after confirming Repository secrets were refreshed.
