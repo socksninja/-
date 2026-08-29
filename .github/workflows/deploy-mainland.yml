@@ -88,4 +88,4 @@ jobs:
           remote_path: /
           clean: true
 
-# Trigger after confirming Repository secrets were refreshed.
+# Trigger after confirmed repository secrets are refreshed.
