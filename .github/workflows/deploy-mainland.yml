@@ -37,3 +37,5 @@ jobs:
           local_path: out
           remote_path: /
           clean: true
+
+# Trigger mainland deployment after repository secret setup.
