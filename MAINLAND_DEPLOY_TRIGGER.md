@@ -1,0 +1,1 @@
+Mainland deployment trigger checkpoint. No game functionality changed.
