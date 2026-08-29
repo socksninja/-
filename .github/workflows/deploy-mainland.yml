@@ -87,3 +87,5 @@ jobs:
           local_path: out
           remote_path: /
           clean: true
+
+# Retry deployment after rotating Tencent credentials.
