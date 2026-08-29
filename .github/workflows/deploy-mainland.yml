@@ -19,13 +19,44 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Install dependencies
         run: npm install
 
       - name: Build static site
         run: npm run build
+
+      - name: Verify Tencent COS access
+        env:
+          TENCENT_CLOUD_SECRET_ID: ${{ secrets.TENCENT_CLOUD_SECRET_ID }}
+          TENCENT_CLOUD_SECRET_KEY: ${{ secrets.TENCENT_CLOUD_SECRET_KEY }}
+          COS_BUCKET: ${{ secrets.COS_BUCKET }}
+          COS_REGION: ${{ secrets.COS_REGION }}
+        run: |
+          npm install --no-save cos-nodejs-sdk-v5
+          node <<'NODE'
+          const COS = require('cos-nodejs-sdk-v5');
+          const cos = new COS({
+            SecretId: process.env.TENCENT_CLOUD_SECRET_ID,
+            SecretKey: process.env.TENCENT_CLOUD_SECRET_KEY,
+          });
+          cos.headBucket(
+            { Bucket: process.env.COS_BUCKET, Region: process.env.COS_REGION },
+            (err) => {
+              if (err) {
+                console.error(JSON.stringify({
+                  code: err.code,
+                  statusCode: err.statusCode,
+                  requestId: err.RequestId,
+                  message: err.message,
+                }));
+                process.exit(1);
+              }
+              console.log('Tencent COS access verified.');
+            },
+          );
+          NODE
 
       - name: Upload to Tencent COS
         uses: TencentCloud/cos-action@v1
@@ -37,5 +68,3 @@ jobs:
           local_path: out
           remote_path: /
           clean: true
-
-# Trigger mainland deployment after repository secret setup.
