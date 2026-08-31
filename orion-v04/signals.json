@@ -1,0 +1,145 @@
+{
+  "generated_at": "2026-08-31T15:30:00+08:00",
+  "status": "research-snapshot",
+  "sources": [
+    {
+      "id": "openai-enterprise-2026-08-12",
+      "publisher": "OpenAI",
+      "published": "2026-08-12",
+      "title": "Enterprise signals: What frontier firms are doing differently",
+      "url": "https://openai.com/signals/enterprise-data/",
+      "facts": [
+        "As of June 2026, Codex generated 64% of combined Codex and ChatGPT output tokens among enterprise customers.",
+        "Weekly active enterprise Codex users grew 108x in legal, 41x in sales, 41x in recruiting, and 26x in marketing since February."
+      ],
+      "quality": 96
+    },
+    {
+      "id": "gartner-agent-governance-2026-05-26",
+      "publisher": "Gartner",
+      "published": "2026-05-26",
+      "title": "Uniform governance can cause enterprise AI agent failure",
+      "url": "https://www.gartner.com/en/newsroom/press-releases/2026-05-26-gartner-says-applying-uniform-governance-across-ai-agents-will-lead-to-enterprise-ai-agent-failure",
+      "facts": [
+        "Gartner predicts that by 2027, 40% of enterprises will demote or decommission autonomous AI agents because of governance failures.",
+        "The research highlights different autonomy levels and trust boundaries as a governance requirement."
+      ],
+      "quality": 94
+    },
+    {
+      "id": "nist-smart-manufacturing-2026-07-03",
+      "publisher": "NIST",
+      "published": "2026-07-03",
+      "title": "2026 Roadmap on Artificial Intelligence and Machine Learning for Smart Manufacturing",
+      "url": "https://www.nist.gov/publications/2026-roadmap-artificial-intelligence-and-machine-learning-smart-manufacturing",
+      "facts": [
+        "Industrial AI deployment still faces challenges in industrial big data, data management, and integration with heterogeneous sensing and control systems.",
+        "The roadmap identifies robotics, digital twins, logistics optimization, explainable AI, reliability, and safety as important areas."
+      ],
+      "quality": 97
+    },
+    {
+      "id": "reuters-soitec-2026-08-31",
+      "publisher": "Reuters",
+      "published": "2026-08-31",
+      "title": "Soitec locks customers into multi-year deals as AI wafer demand surges",
+      "url": "https://www.reuters.com/world/asia-pacific/soitec-locks-customers-into-multi-year-deals-ai-wafer-demand-surges-2026-08-31/",
+      "facts": [
+        "Soitec reported rising demand for silicon photonics substrates driven by AI data-center optical interconnects.",
+        "The company is using multi-year volume commitments and expanding capacity without planning a new fabrication plant before 2029."
+      ],
+      "quality": 92
+    },
+    {
+      "id": "reuters-mhs-2026-08-27",
+      "publisher": "Reuters",
+      "published": "2026-08-27",
+      "title": "Anthropic introduces framework for AI agents to operate physical devices",
+      "url": "https://www.reuters.com/technology/anthropic-unveils-new-framework-allowing-ai-agents-operate-physical-devices-2026-08-27/",
+      "facts": [
+        "Anthropic introduced an early Model Hardware Standard for AI agents operating lab and industrial devices.",
+        "The framework is designed for programmable physical devices including instruments and robotic arms."
+      ],
+      "quality": 90
+    }
+  ],
+  "opportunities": [
+    {
+      "id": "opp-agent-governance-integration",
+      "title": "The enterprise agent control plane gap",
+      "category": ["AI", "Enterprise"],
+      "score": 93,
+      "uncertainty": "Medium",
+      "signalStrength": 96,
+      "evidenceQuality": 95,
+      "marketPull": 91,
+      "timing": 95,
+      "access": 71,
+      "thesis": "As enterprise work shifts from AI assistance to delegated execution, integration, permissions, observability, and governance become a distinct operating problem.",
+      "evidence": [
+        "openai-enterprise-2026-08-12",
+        "gartner-agent-governance-2026-05-26"
+      ],
+      "counterSignals": [
+        "Platform vendors may absorb governance and integration into existing enterprise suites.",
+        "Security requirements can slow buying cycles enough to compress the addressable early market."
+      ],
+      "nextTest": "Interview five workflow owners and security/IT stakeholders around one delegated workflow. Ask for a paid pilot before building a platform.",
+      "unknowns": [
+        "Which workflow has an existing budget owner?",
+        "Can a narrow integration product be purchased without a platform procurement cycle?",
+        "How much of the control plane will be bundled by incumbent software vendors?"
+      ]
+    },
+    {
+      "id": "opp-industrial-integration",
+      "title": "The industrial AI integration layer",
+      "category": ["Manufacturing", "AI"],
+      "score": 89,
+      "uncertainty": "High",
+      "signalStrength": 92,
+      "evidenceQuality": 94,
+      "marketPull": 87,
+      "timing": 90,
+      "access": 63,
+      "thesis": "Industrial AI adoption creates demand for software that connects heterogeneous equipment, data, and AI systems without requiring full factory replacement.",
+      "evidence": [
+        "nist-smart-manufacturing-2026-07-03",
+        "reuters-mhs-2026-08-27"
+      ],
+      "counterSignals": [
+        "Industrial integration is service-heavy and can be difficult to standardize.",
+        "Existing automation integrators may own customer access."
+      ],
+      "nextTest": "Choose one measurable production bottleneck and map the existing machine, PLC, data, and operator workflow. Test a concierge integration with one site.",
+      "unknowns": [
+        "Which vertical has the shortest approval path?",
+        "Can savings be measured within one deployment cycle?",
+        "Who owns the integration budget: plant, IT, or integrator?"
+      ]
+    },
+    {
+      "id": "opp-photonic-supply",
+      "title": "AI optical interconnect supply-chain opportunities",
+      "category": ["AI Infrastructure", "Supply Chain"],
+      "score": 84,
+      "uncertainty": "Medium",
+      "signalStrength": 91,
+      "evidenceQuality": 91,
+      "marketPull": 85,
+      "timing": 92,
+      "access": 55,
+      "thesis": "Accelerating AI data-center optical demand can create adjacent opportunities in capacity planning, supplier intelligence, qualification, and inventory coordination.",
+      "evidence": ["reuters-soitec-2026-08-31"],
+      "counterSignals": [
+        "Large incumbents and long qualification cycles create high barriers to entry.",
+        "Demand growth can be captured directly by established component suppliers."
+      ],
+      "nextTest": "Map three upstream bottlenecks and identify whether smaller buyers have an information or coordination problem that can be sold independently.",
+      "unknowns": [
+        "Where does information asymmetry remain despite long-term contracts?",
+        "Which supplier tier lacks modern intelligence tooling?"
+      ]
+    }
+  ]
+}
