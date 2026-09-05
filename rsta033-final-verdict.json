@@ -9,9 +9,9 @@
     "scope": {
       "method": "POST",
       "path": "/repos/socksninja/-/issues",
-      "body_hash": "cb7c80113ee314defbd0d9d7c035c18b79c4541bcf0dbf5e611cafd3f912974e"
+      "body_hash": "24b633ea99d57e26c730b5614a5038571257b75d9005f0968ff95ddf6b7839e2"
     },
-    "nonce": "33978059916:1"
+    "nonce": "33978245128:1"
   },
   "executor_identity": {
     "decision": "ACCEPT",
@@ -22,20 +22,20 @@
     "protocol": "RNCP-EXECUTOR-IDENTITY-v1",
     "executor_id": "EXTERNAL-GITHUB-EXECUTOR",
     "issuer": "https://token.actions.githubusercontent.com",
-    "token_hash": "8b2128ea693b7b8223c0ac2a6c620adc7afef642e19b373e921549cfe43bb924",
-    "claims_hash": "e7523e77d3a9f516cf6eafc83a6b96d3a3b403088df9fedc4b2c84a618154ebc",
+    "token_hash": "dc008a49bd7eb7070b8a33dd7e22e1d4600000b4d4ddce4cd9c0f6730f08cb2c",
+    "claims_hash": "51729b8af8ebe89525bdaee2209619ad7a2a2b2e63804c8998615de110b7fa26",
     "claims": {
       "sub": "repo:socksninja/-:ref:refs/heads/main",
       "aud": "rsta-033",
       "repository": "socksninja/-",
       "repository_id": "1087941782",
-      "workflow_ref": "socksninja/-/.github/workflows/rsta-017-independent-verifier.yml@refs/heads/main",
-      "workflow_sha": "558ca0e39c990f5d97f03ca87e0a5b1cf9f3ed74",
+      "workflow_ref": "socksninja/-/.github/workflows/rsta-033-executor-delegation.yml@refs/heads/main",
+      "workflow_sha": "fadbbb79ae95aab46170e19bd9d6d53ce0c005e7",
       "ref": "refs/heads/main",
       "ref_type": "branch",
       "event_name": "push",
-      "run_id": "33978059916",
-      "check_run_id": "101338188950",
+      "run_id": "33978245128",
+      "check_run_id": "101338666754",
       "runner_environment": "github-hosted"
     }
   },
@@ -44,17 +44,17 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 43,
-    "html_url": "https://github.com/socksninja/-/issues/43"
+    "issue_number": 48,
+    "html_url": "https://github.com/socksninja/-/issues/48"
   },
   "chain": {
-    "prior_rsta032_content_address": "570c5a5b6edf4f9672f670fe79fe1e9e4c15950251346e30872ae56137c5ed34",
-    "commitment_hash": "0b076b62f962c1f57cbaa6859038f8b6cc720edf1397c842721bb4c7e7823793",
-    "delegation_id": "RSTA-033-DELEGATION-33978059916",
-    "delegation_hash": "482feba60b13df6eb2c8129efeac4282b39919f56aa456faeacfda58c3330d98",
-    "executor_attestation_hash": "1625cc563b21c5d1a5d9d088f379702ffb03b193b4cca146f8379b52824a5304",
-    "event_id": "RSTA-033-DELEGATION-33978059916:REALITY",
-    "event_hash": "5359345f2bc0fb802dbee88c5c717c54b961ecf99b476504ffd8f59b00c4446d"
+    "prior_rsta032_content_address": "79a184f925c8a2ad739b80a946ebf02ad57d8462ef631ac93cf906c4440c2a70",
+    "commitment_hash": "bccea16676356c3ad02cb15d72abbc5620ee99df6d12807507b59ae9f449ad89",
+    "delegation_id": "RSTA-033-DELEGATION-33978245128",
+    "delegation_hash": "54c9fdb165427580fbece1bbb5adfa5515c7c4831c6c592ff79c80f4dd5d706d",
+    "executor_attestation_hash": "8d2d1df8132e2859469a7bc833e412749731d5fcaf5f0fe32ddf2b50b63be85c",
+    "event_id": "RSTA-033-DELEGATION-33978245128:REALITY",
+    "event_hash": "62569d87e7eaaf98ffb875f69be7c95ddb13b943d695b8eec2ea828979825342"
   },
   "guarantees": {
     "commitment_verified": true,
@@ -80,5 +80,5 @@
     "delegated_reality_receipt_verified": true,
     "receipt_binds_subject_and_executor": true
   },
-  "claim_boundary": "This proves a subject-signed delegation constrains a named executor to a specific commitment, action, endpoint and payload, can be consumed once, and yields a delegated reality receipt bound to executor identity. Other infrastructures need equivalent enforcement."
+  "claim_boundary": "This proves a subject-signed delegation constrains a named executor to a specific commitment, action, endpoint and payload, can be consumed once, and yields a delegated reality receipt bound to the executor identity. Other infrastructures require equivalent delegation enforcement."
 }
