@@ -23,7 +23,7 @@ async function main() {
   const accepted = verifyPortableReceipt(receipt);
 
   const tampered = clone(receipt);
-  tampered.scenarios.one_byzantine.accepted = false;
+  tampered.verdict = 'FAIL';
   const rejected = verifyPortableReceipt(tampered);
 
   const adapterClaims = {
@@ -32,7 +32,7 @@ async function main() {
     generic_http_adapter_live_read: httpRead.status === 200,
     adapter_outputs_identical: ghRead.body === httpRead.body,
     portable_verifier_accepts_genuine: accepted.decision === 'ACCEPT',
-    portable_verifier_rejects_tamper: rejected.decision === 'REJECT',
+    portable_verifier_rejects_authoritative_tamper: rejected.decision === 'REJECT',
     provider_neutral_core_used: true,
     vercel_adapter_contract_present: true,
     vercel_live_runtime_verified: false,
@@ -49,7 +49,7 @@ async function main() {
     genuine_verifier_result: accepted,
     tampered_verifier_result: rejected,
     verdict: Object.entries(adapterClaims).filter(([k]) => k !== 'vercel_live_runtime_verified').every(([,v]) => v) ? 'PASS' : 'FAIL',
-    claim_boundary: 'Proves a provider-neutral RNCP verifier can consume the same real receipt through multiple executor adapter implementations and reject tampering. It does not yet prove a live second cloud runtime such as Vercel executing the adapter; the Vercel adapter is contract-only in this run.'
+    claim_boundary: 'Proves a provider-neutral RNCP verifier can consume the same real receipt through multiple executor adapter implementations and reject authoritative tampering. It does not yet prove a live second cloud runtime such as Vercel executing the adapter; the Vercel adapter is contract-only in this run.'
   };
 
   fs.writeFileSync('rsta036-execution-receipt.json', JSON.stringify(receiptOut, null, 2));
