@@ -1,5 +1,4 @@
 name: RSTA-033 Executor Delegation
-# hard-verification-trigger-v2
 
 on:
   push:
@@ -13,26 +12,12 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Issue subject-signed delegated capability
-        run: |
-          set -euo pipefail
-          node > subject-delegation.json <<'JS'
-          import fs from 'node:fs';
-          import { createPrincipal, createCommitment } from './rsta/rncp-causal-commitment.mjs';
-          import { createDelegation, fixedDelegationPolicy, sha256Hex } from './rsta/rsta033-delegation.mjs';
-          const prior=JSON.parse(fs.readFileSync('rsta032-execution-receipt.json','utf8'));
-          if(prior.verdict!=='PASS') throw new Error('RSTA-032 prerequisite invalid');
-          const policy=fixedDelegationPolicy(process.env.GITHUB_REPOSITORY);
-          const subject=createPrincipal('SUBJECT-RSTA-033');
-          const commitment=createCommitment({subject,executorId:policy.executor_id,commitmentId:`RSTA-033-${process.env.GITHUB_RUN_ID}`,action:policy.action,prerequisites:{capability_token_id:'RSTA-032-IDENTITY-PREREQUISITE',anchor_evidence_hash:prior.content_address},predecessorEventHash:prior.chain.event_hash});
-          const body=policy.body({runId:process.env.GITHUB_RUN_ID});
-          const delegation=createDelegation({subject,delegationId:`RSTA-033-DELEGATION-${process.env.GITHUB_RUN_ID}`,executorId:policy.executor_id,commitmentHash:commitment.commitment_hash,action:policy.action,scope:{method:policy.method,path:policy.path,body_hash:sha256Hex(body)},nonce:`${process.env.GITHUB_RUN_ID}:1`});
-          console.log(JSON.stringify({protocol:'RNCP-RSTA-033-EXECUTOR-DELEGATION-v1',subject_public_key_pem:subject.publicKeyPem,commitment,delegation,expected_executor_id:policy.executor_id,expected_action:policy.action,anchor_evidence_hash:prior.content_address,execution_body:body},null,2));
-          JS
+      - name: Build subject commitment and delegation
+        run: node rsta/rsta033-live.mjs subject
       - uses: actions/upload-artifact@v4
         with:
-          name: rsta033-subject-delegation
-          path: subject-delegation.json
+          name: rsta033-subject
+          path: rsta033-subject.json
 
   executor:
     needs: subject
@@ -45,59 +30,26 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: rsta033-subject-delegation
+          name: rsta033-subject
           path: subject
-      - name: Verify delegation, identity, scope and execute real external action
+      - name: Verify delegation and execute real external action
         env:
           GH_TOKEN: ${{ github.token }}
-          OIDC_AUDIENCE: rsta-033
-          EXPECTED_REPOSITORY_ID: ${{ github.repository_id }}
-        run: |
-          set -euo pipefail
-          TOKEN_JSON=$(curl -fsSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${OIDC_AUDIENCE}")
-          printf '%s' "$TOKEN_JSON" > oidc-token-response.json
-          OIDC_TOKEN=$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('oidc-token-response.json','utf8')).value)")
-          export OIDC_TOKEN EXPECTED_REPOSITORY="$GITHUB_REPOSITORY" EXPECTED_WORKFLOW_REF="$GITHUB_REPOSITORY/.github/workflows/rsta-033-executor-delegation.yml@refs/heads/main" EXPECTED_REF="$GITHUB_REF"
-          node <<'JS'
-          import fs from 'node:fs'; import https from 'node:https';
-          import { verifyCommitment } from './rsta/rncp-causal-commitment.mjs';
-          import { createExecutorIdentity, createExecutionRequest, verifyExecutionRequest } from './rsta/rsta030-external-executor.mjs';
-          import { parseJwt, verifyJwtRs256, authorizeExecutorIdentity, createAttestation } from './rsta/rsta032-executor-identity.mjs';
-          import { fixedDelegationPolicy, sha256Hex, verifyDelegation, consumeDelegation, createDelegatedRealityReceipt, verifyDelegatedRealityReceipt } from './rsta/rsta033-delegation.mjs';
-          const intent=JSON.parse(fs.readFileSync('subject/subject-delegation.json','utf8')); const prior=JSON.parse(fs.readFileSync('rsta032-execution-receipt.json','utf8')); const policy=fixedDelegationPolicy(process.env.GITHUB_REPOSITORY); const body=policy.body({runId:process.env.GITHUB_RUN_ID});
-          const c=verifyCommitment(intent.commitment,{expectedExecutorId:policy.executor_id,expectedAction:policy.action,capabilityTokenId:'RSTA-032-IDENTITY-PREREQUISITE',anchorEvidenceHash:prior.content_address}); if(c.decision!=='ACCEPT') throw new Error(`commitment rejected: ${c.code}`);
-          const jwks=await new Promise((resolve,reject)=>https.get('https://token.actions.githubusercontent.com/.well-known/jwks',res=>{let d='';res.on('data',x=>d+=x);res.on('end',()=>res.statusCode===200?resolve(JSON.parse(d)):reject(new Error(`jwks status ${res.statusCode}`)));}).on('error',reject));
-          const parsed=parseJwt(process.env.OIDC_TOKEN); const jwk=jwks.keys.find(k=>k.kid===parsed.header.kid); if(!jwk) throw new Error('OIDC signing key missing'); const jwt=verifyJwtRs256(process.env.OIDC_TOKEN,jwk); if(jwt.decision!=='ACCEPT') throw new Error(`OIDC verification failed: ${jwt.code}`); const claims=jwt.payload;
-          const expectedIdentity={executor_id:policy.executor_id,audience:process.env.OIDC_AUDIENCE,repository:process.env.GITHUB_REPOSITORY,repository_id:process.env.EXPECTED_REPOSITORY_ID,repository_visibility:'public',workflow_ref:process.env.EXPECTED_WORKFLOW_REF,ref:process.env.EXPECTED_REF,ref_type:'branch',event_name:process.env.GITHUB_EVENT_NAME,runner_environment:'github-hosted'}; const identity=authorizeExecutorIdentity(claims,expectedIdentity); if(identity.decision!=='ACCEPT') throw new Error(`identity rejected: ${identity.code}`); const attestation=createAttestation({token:process.env.OIDC_TOKEN,claims,executorId:identity.executor_id}); const attestationHash=sha256Hex(attestation);
-          const dctx={subjectPublicKeyPem:intent.subject_public_key_pem,expectedSubjectId:intent.commitment.subject_id,expectedExecutorId:policy.executor_id,expectedCommitmentHash:intent.commitment.commitment_hash,expectedAction:policy.action,expectedMethod:policy.method,expectedPath:policy.path,expectedBodyHash:sha256Hex(body)};
-          const valid=verifyDelegation(intent.delegation,dctx); if(valid.decision!=='ACCEPT') throw new Error(`delegation rejected: ${valid.code}`);
-          if(verifyDelegation({...intent.delegation,subject_id:'SUBJECT-ATTACKER'},dctx).decision!=='REJECT') throw new Error('subject substitution accepted');
-          if(verifyDelegation({...intent.delegation,executor_id:'ATTACKER-EXECUTOR'},dctx).decision!=='REJECT') throw new Error('executor substitution accepted');
-          if(verifyDelegation({...intent.delegation,commitment_hash:'00'.repeat(32)},dctx).decision!=='REJECT') throw new Error('commitment substitution accepted');
-          if(verifyDelegation({...intent.delegation,action:'DELETE_REPOSITORY'},dctx).decision!=='REJECT') throw new Error('action escalation accepted');
-          if(verifyDelegation({...intent.delegation,scope:{...intent.delegation.scope,path:`/repos/${process.env.GITHUB_REPOSITORY}/hooks`}},dctx).decision!=='REJECT') throw new Error('path escalation accepted');
-          if(verifyDelegation({...intent.delegation,scope:{...intent.delegation.scope,body_hash:sha256Hex({malicious:true})}},dctx).decision!=='REJECT') throw new Error('payload scope escalation accepted');
-          if(verifyDelegation({...intent.delegation,subject_signature:intent.delegation.subject_signature.slice(0,-2)+'aa'},dctx).decision!=='REJECT') throw new Error('signature forgery accepted');
-          const consumedIds=new Set(); const firstUse=consumeDelegation(intent.delegation,consumedIds,dctx); if(firstUse.decision!=='ACCEPT'||!firstUse.consumed) throw new Error('valid delegation not consumed'); const replay=consumeDelegation(intent.delegation,consumedIds,dctx); if(replay.decision!=='REJECT'||replay.code!=='DELEGATION_REPLAY') throw new Error('delegation replay accepted');
-          const executor=createExecutorIdentity(policy.executor_id); const request=createExecutionRequest({executor,requestId:`RSTA-033-REQ-${process.env.GITHUB_RUN_ID}`,commitmentHash:intent.commitment.commitment_hash,action:policy.action,method:policy.method,path:policy.path,body,capabilityTokenId:intent.delegation.delegation_id});
-          const requestCheck=verifyExecutionRequest(request,{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:policy.executor_id,expectedCommitmentHash:intent.commitment.commitment_hash,expectedAction:policy.action,expectedMethod:policy.method,expectedPath:policy.path,expectedBodyHash:sha256Hex(body),expectedCapabilityTokenId:intent.delegation.delegation_id}); if(requestCheck.decision!=='ACCEPT') throw new Error(`request rejected: ${requestCheck.code}`);
-          const apiResult=await new Promise((resolve,reject)=>{const payload=JSON.stringify(body);const req=https.request({hostname:'api.github.com',path:policy.path,method:'POST',headers:{Authorization:`Bearer ${process.env.GH_TOKEN}`,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'rsta-033-delegated-executor','Content-Type':'application/json','Content-Length':Buffer.byteLength(payload)}},res=>{let data='';res.on('data',x=>data+=x);res.on('end',()=>resolve({status:res.statusCode,body:data}));});req.on('error',reject);req.write(payload);req.end();}); if(apiResult.status!==201) throw new Error(`real external action failed: ${apiResult.status} ${apiResult.body}`); const created=JSON.parse(apiResult.body);
-          const rr=createDelegatedRealityReceipt({executor,delegation:intent.delegation,commitmentHash:intent.commitment.commitment_hash,attestationHash,http:{status:apiResult.status},responseBody:created}); const rrCheck=verifyDelegatedRealityReceipt(rr,{executorPublicKeyPem:executor.publicKeyPem,expectedDelegationId:intent.delegation.delegation_id,expectedCommitmentHash:intent.commitment.commitment_hash,expectedExecutorId:policy.executor_id,expectedStatus:201,expectedAttestationHash:attestationHash}); if(rrCheck.decision!=='ACCEPT') throw new Error(`delegated receipt rejected: ${rrCheck.code}`);
-          const guarantees={commitment_verified:true,executor_identity_verified:true,delegation_signature_verified:true,delegation_subject_binding_verified:true,delegation_executor_binding_verified:true,delegation_commitment_binding_verified:true,delegation_action_scope_verified:true,delegation_endpoint_scope_verified:true,delegation_payload_scope_verified:true,subject_substitution_denied:true,executor_substitution_denied:true,commitment_substitution_denied:true,action_escalation_denied:true,endpoint_escalation_denied:true,payload_escalation_denied:true,signature_forgery_denied:true,delegation_consumed:true,delegation_replay_denied:true,request_scope_verified:true,real_external_api_action:true,delegated_reality_receipt_verified:true,receipt_binds_subject_and_executor:true};
-          const external_action={system:'GitHub REST API',method:policy.method,path:policy.path,status:apiResult.status,issue_number:created.number,html_url:created.html_url};
-          const chain={prior_rsta032_content_address:prior.content_address,commitment_hash:intent.commitment.commitment_hash,delegation_id:intent.delegation.delegation_id,delegation_hash:intent.delegation.delegation_hash,executor_attestation_hash:attestationHash,event_id:rr.event_id,event_hash:rr.event_hash};
-          const verdict={rsta:'RSTA-033',status:'PASS',protocol:RSTA033_PROTOCOL,delegation:{subject_id:intent.delegation.subject_id,executor_id:intent.delegation.executor_id,action:intent.delegation.action,scope:intent.delegation.scope,nonce:intent.delegation.nonce},executor_identity:identity,attestation,external_action,chain,guarantees,claim_boundary:'This proves a subject-signed delegation can constrain a named executor to a specific commitment, action, endpoint and payload, with single-use consumption and a delegated reality receipt bound to the executor identity. Other infrastructures require equivalent delegation enforcement.'};
-          const receipt={schema:'RNCP-EXECUTION-RECEIPT-v1',rsta:'RSTA-033',execution:{provider:'github-actions',workflow:process.env.GITHUB_WORKFLOW,run_id:Number(process.env.GITHUB_RUN_ID),job:'executor',head_commit:process.env.GITHUB_SHA,event:process.env.GITHUB_EVENT_NAME,ref:process.env.GITHUB_REF,generated_at:new Date().toISOString()},assertions:guarantees,delegation:verdict.delegation,executor_identity:identity,attestation,external_action,chain,verdict:'PASS'}; receipt.content_address=sha256Hex(receipt);
-          fs.writeFileSync('rsta033-final-verdict.json',JSON.stringify(verdict,null,2)); fs.writeFileSync('rsta033-execution-receipt.json',JSON.stringify(receipt,null,2)); fs.writeFileSync('rsta033-delegated-reality-receipt.json',JSON.stringify(rr,null,2)); console.log(JSON.stringify({status:'PASS',run_id:process.env.GITHUB_RUN_ID,issue_number:created.number,content_address:receipt.content_address,guarantees},null,2));
-          JS
-      - name: Recompute receipt content address
+          GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
+        run: node rsta/rsta033-live.mjs executor
+      - name: Recompute persisted receipt content address
         run: |
           set -euo pipefail
           node <<'JS'
           import fs from 'node:fs'; import crypto from 'node:crypto';
-          const canonical=(v)=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'):JSON.stringify(v); const hash=v=>crypto.createHash('sha256').update(canonical(v)).digest('hex'); const r=JSON.parse(fs.readFileSync('rsta033-execution-receipt.json','utf8')); const stored=r.content_address; const c=structuredClone(r); delete c.content_address; if(hash(c)!==stored) throw new Error('content address mismatch'); for(const [k,v] of Object.entries(r.assertions)) if(v!==true) throw new Error(`assertion failed: ${k}`); console.log(JSON.stringify({receipt_verified:true,content_address:stored},null,2));
+          const canonical=(v)=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'):JSON.stringify(v);
+          const hash=(v)=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
+          const r=JSON.parse(fs.readFileSync('rsta033-execution-receipt.json','utf8')); const stored=r.content_address; const c=structuredClone(r); delete c.content_address;
+          if(hash(c)!==stored) throw new Error('RSTA-033 content address mismatch');
+          for(const [k,v] of Object.entries(r.assertions)) if(v!==true) throw new Error(`assertion failed: ${k}`);
+          console.log(JSON.stringify({receipt_verified:true,content_address:stored},null,2));
           JS
-      - name: Persist RSTA-033 evidence with rebase retry
+      - name: Persist RSTA-033 evidence
         shell: bash
         run: |
           set -euo pipefail
