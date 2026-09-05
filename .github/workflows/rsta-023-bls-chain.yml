@@ -17,18 +17,20 @@ jobs:
       - name: Checkout pinned commit
         uses: actions/checkout@v4
 
-      - name: Install verification dependencies
+      - name: Install isolated verification dependencies
         run: |
           set -euo pipefail
-          cat > package.json <<'JSON'
-          {"type":"module","private":true,"dependencies":{"@noble/curves":"^1.9.7","@noble/hashes":"^1.8.0"}}
-          JSON
-          npm install --silent
+          rm -rf .rsta023
+          mkdir .rsta023
+          cd .rsta023
+          npm init -y >/dev/null 2>&1
+          npm install --silent @noble/curves@1.9.7 @noble/hashes@1.8.0
 
-      - name: Fetch common round from 3 relays and verify BLS + continuity + anti-equivocation
+      - name: Fetch 3 relays and verify 3-round BLS chain
         run: |
           set -euo pipefail
-          node > rsta023-final-verdict.json <<'JS'
+          cd .rsta023
+          node > ../rsta023-final-verdict.json <<'JS'
           import crypto from 'node:crypto';
           import {bls12_381 as bls} from '@noble/curves/bls12-381';
           import {sha256} from '@noble/hashes/sha2';
@@ -40,30 +42,25 @@ jobs:
           const GENESIS=1595431050;
           const SCHEME='pedersen-bls-chained';
 
-          const h = b => Buffer.from(sha256(b));
-          const be64 = n => { const b=Buffer.alloc(8); b.writeBigUInt64BE(BigInt(n)); return b; };
-          const canonical = v => v && typeof v==='object' ? (Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}') : JSON.stringify(v);
-          const shaHex = v => crypto.createHash('sha256').update(canonical(v)).digest('hex');
+          const h=b=>Buffer.from(sha256(b));
+          const be64=n=>{const b=Buffer.alloc(8);b.writeBigUInt64BE(BigInt(n));return b;};
+          const canonical=v=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'):JSON.stringify(v);
+          const shaHex=v=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
 
-          function currentRound(nowSec=Math.floor(Date.now()/1000)) {
-            if (nowSec < GENESIS) return 0;
-            return Math.floor((nowSec-GENESIS)/PERIOD)+1;
+          function currentRound(now=Math.floor(Date.now()/1000)) {
+            return now<GENESIS?0:Math.floor((now-GENESIS)/PERIOD)+1;
           }
 
           async function getJson(url) {
             const r=await fetch(url,{headers:{accept:'application/json'},cache:'no-store'});
-            if (!r.ok) throw new Error(`${url} HTTP ${r.status}`);
+            if(!r.ok) throw new Error(`${url} HTTP ${r.status}`);
             return await r.json();
           }
 
-          async function getBeacon(relay, round='latest') {
-            const candidates = round==='latest'
-              ? [`${relay}/${CHAIN}/public/latest`,`${relay}/public/latest`]
-              : [`${relay}/${CHAIN}/public/${round}`,`${relay}/public/${round}`];
+          async function getBeacon(relay,round='latest') {
+            const urls=round==='latest'?[`${relay}/${CHAIN}/public/latest`,`${relay}/public/latest`]:[`${relay}/${CHAIN}/public/${round}`,`${relay}/public/${round}`];
             let last;
-            for (const u of candidates) {
-              try { return {...await getJson(u),_url:u}; } catch(e) { last=e; }
-            }
+            for(const u of urls){try{return {...await getJson(u),_url:u};}catch(e){last=e;}}
             throw last;
           }
 
@@ -71,76 +68,103 @@ jobs:
             return Buffer.from(beacon.randomness,'hex').equals(h(Buffer.from(beacon.signature,'hex')));
           }
 
+          // drand-client's verified chained-beacon path: message = SHA256(previous_signature || round_be_u64),
+          // then BLS12-381 verification with the chain public key.
           function verifyBlsChained(beacon) {
-            const sig=bls.G1.ProjectivePoint.fromHex(beacon.signature);
-            const pk=bls.G2.ProjectivePoint.fromHex(PINNED_PUBKEY);
-            const msg=h(Buffer.concat([Buffer.from(beacon.previous_signature,'hex'),be64(beacon.round)]));
-            const hm=bls.G1.hashToCurve(msg,{DST:'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_'});
-            return bls.pairing(hm,pk,true).equals(bls.pairing(sig,bls.G2.ProjectivePoint.BASE,true));
+            const message=h(Buffer.concat([Buffer.from(beacon.previous_signature,'hex'),be64(beacon.round)]));
+            return bls.verify(beacon.signature,message,PINNED_PUBKEY);
           }
 
-          // First sample latest once from every relay. A tiny timing skew is normal.
+          // Sample every relay once to choose a round that all relays should have reached.
           const samples=await Promise.all(RELAYS.map(async relay=>({relay,latest:await getBeacon(relay)})));
-          const observedRounds=samples.map(x=>Number(x.latest.round));
-          const targetRound=Math.min(...observedRounds);
-
-          // Cross-relay anti-equivocation is evaluated at one exact common round.
-          const relayData=[];
-          for (const s of samples) {
-            const info=await getJson(`${s.relay}/${CHAIN}/info`);
-            if (info.hash!==CHAIN) throw new Error(`chain hash mismatch at ${s.relay}: ${info.hash}`);
-            if (info.period!==PERIOD || info.genesis_time!==GENESIS) throw new Error(`chain timing mismatch at ${s.relay}`);
-            if (info.schemeID && info.schemeID!==SCHEME) throw new Error(`scheme mismatch at ${s.relay}: ${info.schemeID}`);
-            if (info.public_key && info.public_key.toLowerCase()!==PINNED_PUBKEY) throw new Error(`public key mismatch at ${s.relay}`);
-            const exact=await getBeacon(s.relay,targetRound);
-            const prev=await getBeacon(s.relay,targetRound-1);
-            relayData.push({relay:s.relay,info,latest:s.latest,exact,prev});
+          const observedLatestRounds=samples.map(x=>Number(x.latest.round));
+          const targetRound=Math.min(...observedLatestRounds);
+          const expected=currentRound();
+          if(!(targetRound===expected || targetRound===expected-1)) {
+            throw new Error(`target round outside live window: target=${targetRound} expected=${expected}`);
           }
 
-          const rounds=relayData.map(x=>Number(x.exact.round));
-          const signatures=relayData.map(x=>x.exact.signature);
-          const previous=relayData.map(x=>x.exact.previous_signature);
-          const sameRound=new Set(rounds).size===1 && rounds[0]===targetRound;
-          const sameSignature=new Set(signatures).size===1;
-          const samePrevious=new Set(previous).size===1;
-          if (!(sameRound && sameSignature && samePrevious)) throw new Error(`cross-relay equivocation at fixed round ${targetRound}: rounds=${rounds} signatures=${signatures} previous=${previous}`);
+          // For each relay, retrieve exactly the same three consecutive rounds.
+          const relayData=[];
+          for(const s of samples){
+            const info=await getJson(`${s.relay}/${CHAIN}/info`);
+            if(info.hash!==CHAIN) throw new Error(`chain hash mismatch at ${s.relay}: ${info.hash}`);
+            if(info.period!==PERIOD || info.genesis_time!==GENESIS) throw new Error(`chain timing mismatch at ${s.relay}`);
+            if(info.schemeID && info.schemeID!==SCHEME) throw new Error(`scheme mismatch at ${s.relay}: ${info.schemeID}`);
+            if(info.public_key && info.public_key.toLowerCase()!==PINNED_PUBKEY) throw new Error(`public key mismatch at ${s.relay}`);
+            const beacons=[];
+            for(const round of [targetRound-2,targetRound-1,targetRound]){
+              beacons.push(await getBeacon(s.relay,round));
+            }
+            relayData.push({relay:s.relay,info,beacons});
+          }
 
-          const latest=relayData[0].exact;
-          const prev=relayData[0].prev;
-          const continuity = Number(latest.round)===Number(prev.round)+1 && latest.previous_signature===prev.signature;
-          if (!continuity) throw new Error('round continuity / previous-signature linkage failed');
+          const rounds=relayData.map(x=>x.beacons.map(b=>Number(b.round)));
+          if(!relayData.every(x=>x.beacons.every((b,i)=>Number(b.round)===targetRound-2+i))) {
+            throw new Error(`round sequence mismatch: ${JSON.stringify(rounds)}`);
+          }
 
-          const now=Math.floor(Date.now()/1000);
-          const expected=currentRound(now);
-          const roundTimeOk = targetRound===expected || targetRound===expected-1;
-          if (!roundTimeOk) throw new Error(`round-time mismatch: target=${targetRound} expected=${expected}`);
+          // Cross-relay anti-equivocation across all 3 rounds.
+          const relayAgreement=relayData.every((x)=>x.beacons.every((b,i)=>{
+            if(i===0) return true;
+            return true;
+          }));
+          const crossRoundChecks=[];
+          for(let i=0;i<3;i++){
+            const sigs=relayData.map(x=>x.beacons[i].signature);
+            const prevs=relayData.map(x=>x.beacons[i].previous_signature);
+            const rs=relayData.map(x=>Number(x.beacons[i].round));
+            crossRoundChecks.push({round:targetRound-2+i,rounds_equal:new Set(rs).size===1,signatures_equal:new Set(sigs).size===1,previous_signatures_equal:new Set(prevs).size===1});
+          }
+          if(!crossRoundChecks.every(x=>x.rounds_equal&&x.signatures_equal&&x.previous_signatures_equal)) {
+            throw new Error(`cross-relay equivocation detected: ${JSON.stringify(crossRoundChecks)}`);
+          }
 
-          const randomnessOk=verifyRandomness(latest);
-          const blsOk=verifyBlsChained(latest);
-          if (!(randomnessOk && blsOk)) throw new Error(`cryptographic verification failed: randomness=${randomnessOk} bls=${blsOk}`);
+          // Validate each of the 3 rounds cryptographically and via randomness binding.
+          const cryptographicChecks=[];
+          for(let i=0;i<3;i++){
+            const b=relayData[0].beacons[i];
+            const randomnessOk=verifyRandomness(b);
+            const blsOk=verifyBlsChained(b);
+            cryptographicChecks.push({round:Number(b.round),randomness_binding:randomnessOk,bls_signature:blsOk});
+            if(!(randomnessOk&&blsOk)) throw new Error(`crypto verification failed at round ${b.round}: randomness=${randomnessOk} bls=${blsOk}`);
+          }
 
-          // Negative controls must fail cryptographically.
-          const badSig={...latest,signature:'00'.repeat(96)};
-          const badPrev={...latest,previous_signature:'00'.repeat(96)};
-          const badRound={...latest,round:Number(latest.round)+1};
-          const tamperReject = !verifyRandomness(badSig) && (()=>{try{return !verifyBlsChained(badSig)}catch{return true}})();
-          const prevReject = (()=>{try{return !verifyBlsChained(badPrev)}catch{return true}})();
-          const roundReject = (()=>{try{return !verifyBlsChained(badRound)}catch{return true}})();
-          if (!(tamperReject && prevReject && roundReject)) throw new Error('negative cryptographic controls failed');
+          // Round continuity / chained previous-signature linkage across the 3-round window.
+          const chainContinuity=[];
+          for(let i=1;i<3;i++){
+            const prev=relayData[0].beacons[i-1];
+            const cur=relayData[0].beacons[i];
+            const ok=Number(cur.round)===Number(prev.round)+1 && cur.previous_signature===prev.signature;
+            chainContinuity.push({from:Number(prev.round),to:Number(cur.round),linked:ok});
+            if(!ok) throw new Error(`chain continuity failed ${prev.round}->${cur.round}`);
+          }
+
+          // Negative controls: altered signature, altered previous signature, altered round.
+          const good=relayData[0].beacons[2];
+          const tamperedSignature={...good,signature:'00'.repeat(96)};
+          const alteredPrevious={...good,previous_signature:'00'.repeat(96)};
+          const alteredRound={...good,round:Number(good.round)+1};
+          const safeBool=(fn)=>{try{return fn();}catch{return false;}};
+          const tamperRejected=!safeBool(()=>verifyBlsChained(tamperedSignature));
+          const previousRejected=!safeBool(()=>verifyBlsChained(alteredPrevious));
+          const roundRejected=!safeBool(()=>verifyBlsChained(alteredRound));
+          if(!(tamperRejected&&previousRejected&&roundRejected)) throw new Error('negative cryptographic controls failed');
 
           const verdict={
             rsta:'RSTA-023',status:'PASS',
             chain:{hash:CHAIN,scheme:SCHEME,period:PERIOD,genesis_time:GENESIS,pinned_public_key:PINNED_PUBKEY},
-            observed_latest_rounds:observedRounds,
+            observed_latest_rounds:observedLatestRounds,
             target_round:targetRound,
             current_round_expected:expected,
-            bls_signature_verification:blsOk,
-            randomness_hash_binding:randomnessOk,
-            round_continuity:continuity,
-            cross_relay_anti_equivocation:{fixed_round:targetRound,rounds_equal:sameRound,signatures_equal:sameSignature,previous_signatures_equal:samePrevious,relay_count:RELAYS.length},
-            negative_controls:{tampered_signature_rejected:tamperReject,previous_signature_rejected:prevReject,round_mutation_rejected:roundReject},
-            relays:relayData.map(x=>({relay:x.relay,latest_round:x.latest.round,verified_round:x.exact.round,signature:x.exact.signature,previous_signature:x.exact.previous_signature})),
-            evidence_hash:shaHex({round:latest.round,signature:latest.signature,previous_signature:latest.previous_signature,randomness:latest.randomness,chain:CHAIN})
+            verified_round_window:[targetRound-2,targetRound-1,targetRound],
+            bls_signature_verification:{all_three_rounds:true,checks:cryptographicChecks},
+            randomness_hash_binding:{all_three_rounds:true},
+            round_continuity:{window:true,links:chainContinuity},
+            cross_relay_anti_equivocation:{relay_count:RELAYS.length,rounds:crossRoundChecks},
+            negative_controls:{tampered_signature_rejected:tamperRejected,previous_signature_rejected:previousRejected,round_mutation_rejected:roundRejected},
+            relay_snapshot:relayData.map(x=>({relay:x.relay,rounds:x.beacons.map(b=>Number(b.round)),signatures:x.beacons.map(b=>b.signature),previous_signatures:x.beacons.map(b=>b.previous_signature)})),
+            evidence_hash:shaHex({chain:CHAIN,window:[targetRound-2,targetRound-1,targetRound],relays:relayData.map(x=>({relay:x.relay,beacons:x.beacons}))})
           };
           console.log(JSON.stringify(verdict,null,2));
           JS
@@ -150,6 +174,6 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add rsta023-final-verdict.json package.json package-lock.json
+          git add rsta023-final-verdict.json
           git commit -m 'rsta: persist RSTA-023 cryptographic verification verdict [skip ci]'
           git push origin HEAD:main
