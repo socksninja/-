@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 33980229088,
+    "run_id": 33980245514,
     "job": "executor",
-    "head_commit": "503c363357f5e24a2a5d6ea41c676d6cb4efc010",
+    "head_commit": "338f130402983da8625f52087343ae0f00673d66",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-05T17:12:39.810Z"
+    "generated_at": "2026-09-05T17:13:17.726Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "30ae2ad3f00f6c75846540a674c39974e4af5e4eecfde8112049b2daf092babe"
+    "body_hash": "9f58f55a22772098cbeda1d3b6477df7b27aac88f2438a41998376bbe380b61b"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 152,
-    "html_url": "https://github.com/socksninja/-/issues/152"
+    "issue_number": 177,
+    "html_url": "https://github.com/socksninja/-/issues/177"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "c70c3be8426331d39b15a3ff5cfb096860b94f54d602f41e279edc92f9b70f56",
-    "request_id": "RSTA-031-REQ-33980229088",
-    "event_id": "RSTA-031-REQ-33980229088:REALITY",
-    "event_hash": "a95c3e1caddd1a77f9c99f209b7b3093f7d99c0b283995090bbca957ff206fee"
+    "commitment_hash": "d010946215ff09e0ebc956c966e841047255daf0ee8a8608a9652d9739c58bea",
+    "request_id": "RSTA-031-REQ-33980245514",
+    "event_id": "RSTA-031-REQ-33980245514:REALITY",
+    "event_hash": "06226537f5958f7d0887691c1b0fa4caf9d341d443404eed9e0112e105b09e4a"
   },
   "verdict": "PASS",
-  "content_address": "f36272f7e29a479fd9ff1241aebd4bb12837259dc272b2bb633d8ba4319686eb"
+  "content_address": "08cc05b082cd7b51d7990da98f71739a43657697c96a085cf0ef32f1eb160296"
 }
