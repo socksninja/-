@@ -70,7 +70,6 @@ jobs:
             return bls.longSignatures.verify(hexBytes(b.signature),point,hexBytes(PUBKEY));
           }
 
-          // Build a fresh cryptographically verified anchor from three independent drand relays.
           const latest=await Promise.all(RELAYS.map(async relay=>({relay,beacon:await getJson(`${relay}/${CHAIN}/public/latest`)})));
           const target=Math.min(...latest.map(x=>Number(x.beacon.round)));
           const expectedRound=currentRound();
@@ -107,7 +106,7 @@ jobs:
             if(!ok) throw new Error(`anchor continuity failed ${own[i-1].round}->${own[i].round}`);
           }
 
-          const anchor={
+          const anchorCore={
             chain:CHAIN,
             round:target,
             signature:own[2].signature,
@@ -118,10 +117,23 @@ jobs:
             continuity:true,
             evidence_hash:shaHex({chain:CHAIN,round:target,signature:own[2].signature,previous_signature:own[2].previous_signature})
           };
+          // This token is minted only after live BLS + cross-relay + continuity verification.
+          const verifiedProof=shaHex(anchorCore);
+          const anchor={...anchorCore,proof:verifiedProof};
 
-          // Capability gate: the side-effecting executor is unreachable unless every anchor predicate is true.
+          // Capability gate: all authority-bearing predicates plus the unforgeable-in-context
+          // proof digest must match the freshly verified Reality Anchor before any side effect.
           function capabilityGate(a){
-            const valid=!!a && a.cryptographically_valid===true && a.cross_relay_agreement===true && a.continuity===true && a.chain===CHAIN && Number(a.round)===target && typeof a.signature==='string' && a.signature.length===192;
+            const valid=!!a &&
+              a.proof===verifiedProof &&
+              a.cryptographically_valid===true &&
+              a.cross_relay_agreement===true &&
+              a.continuity===true &&
+              a.chain===CHAIN &&
+              Number(a.round)===target &&
+              typeof a.signature==='string' && a.signature.length===192 &&
+              typeof a.previous_signature==='string' && a.previous_signature.length===192 &&
+              a.evidence_hash===anchorCore.evidence_hash;
             return valid ? {decision:'ACCEPT',capability:'CAPABILITY_UNLOCKED'} : {decision:'REJECT',capability:'CAPABILITY_LOCKED'};
           }
 
@@ -129,9 +141,9 @@ jobs:
           let externalStatus=null;
           let externalResponseHash=null;
           async function executeCapability(gate){
-            if(gate.decision!=='ACCEPT') throw new Error('executor reached without capability unlock');
+            if(gate.decision!=='ACCEPT') throw new Error('EXECUTED reached without capability unlock');
             actionInvocations++;
-            const body={commitment:COMMITMENT,action:ACTION,anchor_round:target,anchor_evidence_hash:anchor.evidence_hash};
+            const body={commitment:COMMITMENT,action:ACTION,anchor_round:target,anchor_proof:verifiedProof};
             const r=await fetch('https://httpbin.org/post',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),cache:'no-store'});
             externalStatus=r.status;
             if(!r.ok) throw new Error(`external action HTTP ${r.status}`);
@@ -143,39 +155,38 @@ jobs:
           const baselineGate=capabilityGate(anchor);
           const baselineExecution=await executeCapability(baselineGate);
 
-          // Negative controls: the executor must not be reachable for any invalid anchor state.
           const negatives={
-            no_anchor:{anchor:null},
-            tampered_signature:{anchor:{...anchor,signature:'00'.repeat(96)}},
-            wrong_round:{anchor:{...anchor,round:target+1}},
-            broken_chain:{anchor:{...anchor,continuity:false}},
-            non_cryptographic:{anchor:{...anchor,cryptographically_valid:false}},
-            relay_disagreement:{anchor:{...anchor,cross_relay_agreement:false}},
-            wrong_chain:{anchor:{...anchor,chain:'wrong-chain'}}
+            no_anchor:null,
+            tampered_signature:{...anchor,signature:'00'.repeat(96)},
+            tampered_previous_signature:{...anchor,previous_signature:'00'.repeat(96)},
+            wrong_round:{...anchor,round:target+1},
+            stale_round:{...anchor,round:target-1},
+            broken_chain:{...anchor,continuity:false},
+            non_cryptographic:{...anchor,cryptographically_valid:false},
+            relay_disagreement:{...anchor,cross_relay_agreement:false},
+            wrong_chain:{...anchor,chain:'wrong-chain'},
+            tampered_proof:{...anchor,proof:'00'.repeat(32)},
+            tampered_evidence_hash:{...anchor,evidence_hash:'00'.repeat(32)}
           };
           const negativeResults={};
-          for(const [name,c] of Object.entries(negatives)){
+          for(const [name,candidate] of Object.entries(negatives)){
             const before=actionInvocations;
-            const gate=capabilityGate(c.anchor);
+            const gate=capabilityGate(candidate);
             let executionAttempted=false;
-            let blockedError=null;
             if(gate.decision==='ACCEPT'){
               executionAttempted=true;
               await executeCapability(gate);
-            } else {
-              blockedError='CAPABILITY_LOCKED_BEFORE_EXECUTION';
             }
-            negativeResults[name]={decision:gate.decision,capability:gate.capability,execution_attempted:executionAttempted,action_invocations_delta:actionInvocations-before,blocked_error:blockedError};
+            negativeResults[name]={decision:gate.decision,capability:gate.capability,execution_attempted:executionAttempted,action_invocations_delta:actionInvocations-before};
             if(!(gate.decision==='REJECT'&&gate.capability==='CAPABILITY_LOCKED'&&!executionAttempted&&actionInvocations===before)) throw new Error(`negative gate failed: ${name}`);
           }
 
-          // Additional structural invariant for this implementation: all 7 invalid anchor states produced zero side effects.
           const allNegativesFailClosed=Object.values(negativeResults).every(x=>x.decision==='REJECT'&&x.capability==='CAPABILITY_LOCKED'&&x.execution_attempted===false&&x.action_invocations_delta===0);
           if(!allNegativesFailClosed) throw new Error('fail-closed capability invariant violated');
 
           const final={
             rsta:'RSTA-024',status:'PASS',
-            invariant:'CAPABILITY_UNLOCKED/EXECUTED requires cryptographically_valid Reality Anchor',
+            invariant:'CAPABILITY_UNLOCKED and EXECUTED require the freshly verified Reality Anchor proof',
             baseline:{gate:baselineGate,execution:baselineExecution,external_http_status:externalStatus,external_response_sha256:externalResponseHash,action_invocations:actionInvocations},
             anchor:{...anchor,checks:anchorChecks,chain_links:chainLinks},
             negative_controls:negativeResults,
