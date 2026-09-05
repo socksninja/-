@@ -1,0 +1,1 @@
+RSTA-030 is implemented as an external HTTP execution-boundary test. The protocol requires a valid RNCP commitment and signed execution request before the target action is accepted, and binds the resulting external observation into a signed reality receipt. Bypass and tamper attempts are denial cases.
