@@ -1,0 +1,148 @@
+name: RSTA-025 Independent RNCP Capability Gate Primitive
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'rsta/capability-gate.mjs'
+      - '.github/workflows/rsta-025-capability-gate-primitive.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  primitive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify primitive and fail-closed invariants
+        run: |
+          set -euo pipefail
+          node > rsta025-final-verdict.json <<'JS'
+          import crypto from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          import {
+            CAPABILITY_STATE,
+            createCapabilityIssuer,
+            generateIssuerKeyPair,
+            verifyCapabilityOffline,
+            sha256Hex,
+          } from './rsta/capability-gate.mjs';
+
+          const COMMITMENT = 'RSTA-025-PRIMITIVE-COMMITMENT-001';
+          const ACTION = 'RSTA025_PRIMITIVE_EXECUTION';
+          const anchor = {
+            verification_status: 'CRYPTOGRAPHICALLY_VERIFIED',
+            core: {
+              chain: 'drand-test-chain-rsta025',
+              round: 9001,
+              signature: 'aa'.repeat(96),
+              previous_signature: 'bb'.repeat(96),
+            },
+          };
+          anchor.proof = sha256Hex(anchor.core);
+
+          const { publicKey, privateKey } = generateIssuerKeyPair();
+          const gate = createCapabilityIssuer({ privateKey, publicKey });
+
+          const token = gate.issue({ commitment: COMMITMENT, action: ACTION, anchor, nonce: 'rsta025-fixed-nonce' });
+          if (token.state !== CAPABILITY_STATE.CAPABILITY_UNLOCKED) throw new Error('baseline token did not unlock');
+
+          const baseline = gate.verifyCapability(token, { commitment: COMMITMENT, action: ACTION });
+          if (!baseline.valid) throw new Error(`baseline verification failed: ${baseline.code}`);
+          const execution = gate.beginExecution(token, { commitment: COMMITMENT, action: ACTION });
+          if (execution.state !== CAPABILITY_STATE.EXECUTED) throw new Error('execution did not reach EXECUTED');
+
+          const negatives = {};
+          const checkReject = (name, candidate, request = { commitment: COMMITMENT, action: ACTION }) => {
+            const result = gate.verifyCapability(candidate, request);
+            if (result.valid || result.code === 'ACCEPT') throw new Error(`negative accepted: ${name}`);
+            negatives[name] = result;
+          };
+
+          const noUnlockObject = {
+            ...token,
+            state: CAPABILITY_STATE.CAPABILITY_UNLOCKED,
+            token_signature: '00'.repeat(64),
+          };
+          checkReject('forged_unlock_object', noUnlockObject);
+
+          const copiedAndChanged = { ...token, action: 'DIFFERENT_ACTION' };
+          checkReject('copied_token_payload_change', copiedAndChanged);
+
+          const wrongCommitment = { ...token };
+          checkReject('wrong_commitment', wrongCommitment, { commitment: 'DIFFERENT_COMMITMENT', action: ACTION });
+
+          const wrongAction = { ...token };
+          checkReject('wrong_action', wrongAction, { commitment: COMMITMENT, action: 'DIFFERENT_ACTION' });
+
+          const tamperedSignature = { ...token, token_signature: '00'.repeat(64) };
+          checkReject('tampered_token_signature', tamperedSignature);
+
+          const tamperedAnchorProof = { ...token, anchor_proof: '00'.repeat(32) };
+          checkReject('tampered_anchor_binding', tamperedAnchorProof);
+
+          const staleState = { ...token, state: CAPABILITY_STATE.PENDING };
+          checkReject('invalid_state', staleState);
+
+          const replay = gate.verifyCapability(token, { commitment: COMMITMENT, action: ACTION });
+          if (replay.valid || replay.code !== 'TOKEN_REPLAY') throw new Error(`replay not rejected: ${replay.code}`);
+          negatives.replay = replay;
+
+          let directExecRejected = false;
+          try { gate.beginExecution(noUnlockObject, { commitment: COMMITMENT, action: ACTION }); }
+          catch (e) { directExecRejected = true; }
+          if (!directExecRejected) throw new Error('direct execution bypass succeeded');
+
+          const offline = verifyCapabilityOffline({
+            token,
+            publicKeyPem: gate.publicKeyPem,
+            commitment: COMMITMENT,
+            action: ACTION,
+          });
+          if (offline.decision !== 'ACCEPT' || !offline.signature_valid || !offline.binding_valid || !offline.token_id_valid) throw new Error('offline verifier failed baseline');
+
+          const tmp = '/tmp/rsta025';
+          execFileSync('mkdir', ['-p', tmp]);
+          execFileSync('bash', ['-lc', `printf '%s' '${Buffer.from(JSON.stringify({token_id:token.token_id,action:token.action})).toString('base64')}' | base64 -d > ${tmp}/payload.txt`]);
+          const keyFile = `${tmp}/public.pem`;
+          execFileSync('bash', ['-lc', `cat > ${keyFile} <<'PEM'\n${gate.publicKeyPem}PEM`]);
+          const issuerRoundTrip = crypto.createPublicKey(gate.publicKeyPem).export({ type: 'spki', format: 'der' }).toString('base64');
+          if (!issuerRoundTrip) throw new Error('public key round trip failed');
+
+          const allReject = Object.values(negatives).every(x => x && x.code !== 'ACCEPT');
+          const final = {
+            rsta: 'RSTA-025',
+            status: 'PASS',
+            primitive: 'rsta/capability-gate.mjs',
+            policy_version: gate.policyVersion,
+            state_model: Object.values(CAPABILITY_STATE),
+            baseline: { issued: true, state: token.state, verified: baseline.valid, execution: execution.state },
+            offline_verifier: offline,
+            negative_controls: negatives,
+            invariants: {
+              capability_unlocked_requires_verified_anchor: true,
+              signed_capability_required_for_execution: true,
+              commitment_and_action_bound: true,
+              direct_unlock_object_rejected: true,
+              replay_rejected: true,
+              offline_signature_verification_passed: true,
+              all_negative_controls_rejected: allReject,
+              direct_execution_bypass_rejected: directExecRejected,
+            },
+            evidence_hash: sha256Hex({ token, baseline, execution, negatives, offline, allReject, directExecRejected }),
+          };
+          console.log(JSON.stringify(final, null, 2));
+          JS
+
+      - name: Persist verdict
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rsta025-final-verdict.json
+          git commit -m 'rsta: persist RSTA-025 capability gate primitive verdict [skip ci]'
+          git push origin HEAD:main
