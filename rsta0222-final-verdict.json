@@ -1,0 +1,40 @@
+{
+  "rsta": "RSTA-022.2",
+  "status": "PASS",
+  "anchor_model": "INDEPENDENT_DISTRIBUTED_RANDOMNESS_BEACON",
+  "baseline_quorum": {
+    "decision": "ACCEPT",
+    "reason": "QUORUM_2_OF_3"
+  },
+  "provider_failure": {
+    "decision": "ACCEPT",
+    "reason": "SURVIVES_C_LOSS",
+    "simulation": "C removed; A+B independently verified"
+  },
+  "collusion_simulation": {
+    "quorum": "ACCEPT",
+    "anchor_gate": "REJECT",
+    "final": "REJECT"
+  },
+  "tamper": "REJECT",
+  "replay": "REJECT",
+  "final_capability_gate": {
+    "honest": "ACCEPT",
+    "colluding_majority": "REJECT"
+  },
+  "beacon": {
+    "type": "DRAND_PUBLIC_BEACON",
+    "network": "League-of-Entropy-default",
+    "round": 6439482,
+    "randomness": "a72a5a5d7c55350a78151d3b889c4de75c79ce46d0b03d8bc84b480f17dc4782",
+    "signature": "98dad238f44ee65faabcba78c639baa8a9ac4df8b956899e35732acf1b7957086fc83946a4e47f3a930e8772afc74cc0133923558147eaa5e6727430fbd3a9a7a84dffa9a4a9e45175b58e990fc0c615d4d62e95b67dd7e3d275818b32b5aada",
+    "relay_count": 3,
+    "relays": [
+      "https://api.drand.sh/public/latest",
+      "https://api2.drand.sh/public/latest",
+      "https://drand.cloudflare.com/public/latest"
+    ],
+    "beacon_hash": "b33115c6591c5c6690f2864f33469670617d90e1a53396b2a050f051d91cbcb4"
+  },
+  "claim_boundary": "The beacon is an independently generated external fact/randomness source. This stage verifies cross-relay consistency and SHA-256(signature) binding; full BLS public-key verification is reserved for the next hardening stage."
+}
