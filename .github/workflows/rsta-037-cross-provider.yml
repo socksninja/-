@@ -34,11 +34,12 @@ jobs:
           import fs from 'node:fs'; import crypto from 'node:crypto';
           const sha256=(s)=>crypto.createHash('sha256').update(s).digest('hex');
           const vercel=JSON.parse(fs.readFileSync(process.env.VERCEL_FILE,'utf8'));
-          const get=async(url,headers={})=>{const r=await fetch(url,{headers,cache:'no-store'}); const t=await r.text(); return {status:r.status,ok:r.ok,text:t,hash:sha256(t)};};
+          const get=async(url,headers={})=>{const r=await fetch(url,{headers,cache:'no-store'}); const t=await r.text(); return {status:r.status,ok:r.ok,hash:sha256(t)};};
           const issue=await get(process.env.ISSUE_URL,{accept:'application/vnd.github+json','user-agent':'rncp-rsta037-github-independent-verifier'});
           const anchor=await get(process.env.ANCHOR_URL);
           const a=vercel.external_actions||[];
-          const issueReported=a.find(x=>x.url===process.env.ISSUE_URL); const anchorReported=a.find(x=>x.url===process.env.ANCHOR_URL);
+          const issueReported=a.find(x=>x.url===process.env.ISSUE_URL);
+          const anchorReported=a.find(x=>x.url===process.env.ANCHOR_URL);
           const checks={
             vercel_provider_live: vercel.provider==='vercel' && vercel.runtime==='vercel-lambda' && vercel.ok===true,
             vercel_external_issue_verified: Boolean(issueReported)&&issue.ok&&issue.status===issueReported.status&&issue.hash===issueReported.response_sha256,
@@ -57,9 +58,6 @@ jobs:
           console.log(JSON.stringify(receipt,null,2));
           if(!all) process.exit(1);
           JS
-        env:
-          ISSUE_URL: https://api.github.com/repos/socksninja/-/issues/131
-          ANCHOR_URL: https://raw.githubusercontent.com/socksninja/-/main/rsta-evidence/rsta035/33979726811-rsta035-execution-receipt.json
       - name: Persist RSTA-037 evidence
         shell: bash
         env:
