@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-033 Executor Delegation",
-    "run_id": 33978245128,
+    "run_id": 33978262910,
     "job": "rsta033-executor",
-    "head_commit": "fadbbb79ae95aab46170e19bd9d6d53ce0c005e7",
+    "head_commit": "4f2ba83ac1598cd02e733bbb42e25835cefd3e6c",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-05T16:33:51.618Z"
+    "generated_at": "2026-09-05T16:34:13.783Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -42,9 +42,9 @@
     "scope": {
       "method": "POST",
       "path": "/repos/socksninja/-/issues",
-      "body_hash": "24b633ea99d57e26c730b5614a5038571257b75d9005f0968ff95ddf6b7839e2"
+      "body_hash": "c6f20f16c396e60e0aedf921c42fbf304c64a49a97d964987ec9b6e559545ffb"
     },
-    "nonce": "33978245128:1"
+    "nonce": "33978262910:1"
   },
   "executor_identity": {
     "decision": "ACCEPT",
@@ -55,20 +55,20 @@
     "protocol": "RNCP-EXECUTOR-IDENTITY-v1",
     "executor_id": "EXTERNAL-GITHUB-EXECUTOR",
     "issuer": "https://token.actions.githubusercontent.com",
-    "token_hash": "dc008a49bd7eb7070b8a33dd7e22e1d4600000b4d4ddce4cd9c0f6730f08cb2c",
-    "claims_hash": "51729b8af8ebe89525bdaee2209619ad7a2a2b2e63804c8998615de110b7fa26",
+    "token_hash": "c36be87bdbb827b580fdc6dda63020934b4570bb7b852e0bef01145215000d4a",
+    "claims_hash": "9db142781c31f854f5ab15eaf292fa1726d902cf6b74e62126136fda46f5e55e",
     "claims": {
       "sub": "repo:socksninja/-:ref:refs/heads/main",
       "aud": "rsta-033",
       "repository": "socksninja/-",
       "repository_id": "1087941782",
       "workflow_ref": "socksninja/-/.github/workflows/rsta-033-executor-delegation.yml@refs/heads/main",
-      "workflow_sha": "fadbbb79ae95aab46170e19bd9d6d53ce0c005e7",
+      "workflow_sha": "4f2ba83ac1598cd02e733bbb42e25835cefd3e6c",
       "ref": "refs/heads/main",
       "ref_type": "branch",
       "event_name": "push",
-      "run_id": "33978245128",
-      "check_run_id": "101338666754",
+      "run_id": "33978262910",
+      "check_run_id": "101338723628",
       "runner_environment": "github-hosted"
     }
   },
@@ -77,18 +77,18 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 48,
-    "html_url": "https://github.com/socksninja/-/issues/48"
+    "issue_number": 55,
+    "html_url": "https://github.com/socksninja/-/issues/55"
   },
   "chain": {
-    "prior_rsta032_content_address": "79a184f925c8a2ad739b80a946ebf02ad57d8462ef631ac93cf906c4440c2a70",
-    "commitment_hash": "bccea16676356c3ad02cb15d72abbc5620ee99df6d12807507b59ae9f449ad89",
-    "delegation_id": "RSTA-033-DELEGATION-33978245128",
-    "delegation_hash": "54c9fdb165427580fbece1bbb5adfa5515c7c4831c6c592ff79c80f4dd5d706d",
-    "executor_attestation_hash": "8d2d1df8132e2859469a7bc833e412749731d5fcaf5f0fe32ddf2b50b63be85c",
-    "event_id": "RSTA-033-DELEGATION-33978245128:REALITY",
-    "event_hash": "62569d87e7eaaf98ffb875f69be7c95ddb13b943d695b8eec2ea828979825342"
+    "prior_rsta032_content_address": "f2009438f01ed3bc5f7af58b3a7b57231bcf54fde63750fddf76ac16140eb1ec",
+    "commitment_hash": "b076e9d96956e1150d36c609f959877d7457ed6659728be871ce84f9246c1808",
+    "delegation_id": "RSTA-033-DELEGATION-33978262910",
+    "delegation_hash": "28690d44a6d0ee37632b8d4120490a343a8063e45d78cf121cbada8d61a5db85",
+    "executor_attestation_hash": "a24c833576b7a556ecb8352aa0bb7ebae356cbe9ea67241ee003f0503e79a548",
+    "event_id": "RSTA-033-DELEGATION-33978262910:REALITY",
+    "event_hash": "b240393af3c858cca2a23e08755d4fcce2b19afcd77f23ceb9bbfab884082f40"
   },
   "verdict": "PASS",
-  "content_address": "6f6e6ea9b03f0132047539eb708802f31333da02f667ff70fef8e596a0fa3100"
+  "content_address": "86d6517d8a243c71a11461927d5e097207eebec0d61edae0ff9db739b932affa"
 }
