@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 33977423519,
+    "run_id": 33977607204,
     "job": "executor",
-    "head_commit": "c2e938cc89c7d79e63069b11baf3dfd966322857",
+    "head_commit": "575c26733d3d6063c23cc8f5da498b10d48f933e",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-05T16:18:51.210Z"
+    "generated_at": "2026-09-05T16:21:48.248Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "9d02029b8a0c8679d07631a529fd833ee3650c9703301ff3854b3258b2a04540"
+    "body_hash": "a6b761ef6139a9f2b068f189f18b46cb1363950ef9e8105b98a05affc9c1eb88"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 8,
-    "html_url": "https://github.com/socksninja/-/issues/8"
+    "issue_number": 10,
+    "html_url": "https://github.com/socksninja/-/issues/10"
   },
   "chain": {
-    "prior_rsta030_content_address": "bbddb7700ea3021de4ffb200559a3e54a3b9ccd71df89ae5b2a8298f8b8b6d0d",
-    "commitment_hash": "4bbe4e9460144858101d4144289e318fc8f2c41f82b4b6251ce330ffc64462fd",
-    "request_id": "RSTA-031-REQ-33977423519",
-    "event_id": "RSTA-031-REQ-33977423519:REALITY",
-    "event_hash": "86836094d158b76d2bd8cbe1cfadead376121ba5907811cb883706c7f89873cf"
+    "prior_rsta030_content_address": "5b4e28c3412733db2d6da6cf8b121904782c0db92d9a68bcc98cb3ba9532f3ec",
+    "commitment_hash": "7a3705c67f4835dfb5e0bd84bacf3e067cb6780ab059e820dbf8db32e2ec2cde",
+    "request_id": "RSTA-031-REQ-33977607204",
+    "event_id": "RSTA-031-REQ-33977607204:REALITY",
+    "event_hash": "da21a57faff2d5ff0844c923fc486fffd4d763ea0e512981eaf0f189a1ed515b"
   },
   "verdict": "PASS",
-  "content_address": "2d02408f70f033ca4b9de12ff745fc22511c36238a841e54c60264b59babe787"
+  "content_address": "12a27722536e636f81184d8d6b98d96bc5b8dd776865fe67c42490737e85ab27"
 }
