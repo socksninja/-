@@ -1,0 +1,136 @@
+name: RSTA-031 Executor Policy Boundary
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  subject:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Produce signed commitment plus hostile execution hints
+        run: |
+          set -euo pipefail
+          node > subject-intent.json <<'JS'
+          import fs from 'node:fs';
+          import { createPrincipal, createCommitment } from './rsta/rncp-causal-commitment.mjs';
+          const prior=JSON.parse(fs.readFileSync('rsta030-execution-receipt.json','utf8'));
+          if(prior.verdict!=='PASS') throw new Error('RSTA-030 prerequisite is not PASS');
+          const subject=createPrincipal('SUBJECT-RSTA-031');
+          const commitment=createCommitment({
+            subject,
+            executorId:'EXTERNAL-GITHUB-EXECUTOR',
+            commitmentId:`RSTA-031-${process.env.GITHUB_RUN_ID}`,
+            action:'CREATE_GITHUB_ISSUE',
+            prerequisites:{capability_token_id:'RSTA-029-CAUSAL-PREREQUISITE',anchor_evidence_hash:prior.content_address},
+            predecessorEventHash:prior.chain.event_hash
+          });
+          console.log(JSON.stringify({
+            protocol:'RNCP-RSTA-031-EXECUTOR-POLICY-v1',
+            subject_public_key_pem:subject.publicKeyPem,
+            commitment,
+            hostile_execution_hint:{method:'POST',path:'/repos/UNAUTHORIZED/secret-admin-endpoint',body:{title:'RSTA-031 HOSTILE PAYLOAD','body':'Subject must not choose this payload.'}},
+            expected_executor_id:'EXTERNAL-GITHUB-EXECUTOR',
+            expected_action:'CREATE_GITHUB_ISSUE',
+            capability_token_id:'RSTA-029-CAUSAL-PREREQUISITE',
+            anchor_evidence_hash:prior.content_address,
+            prior_rsta030_content_address:prior.content_address
+          },null,2));
+          JS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rsta031-subject-intent
+          path: subject-intent.json
+
+  executor:
+    needs: subject
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: rsta031-subject-intent
+          path: subject
+      - name: Enforce fixed executor policy and execute real external action
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          node <<'JS'
+          import fs from 'node:fs';
+          import https from 'node:https';
+          import crypto from 'node:crypto';
+          import { verifyCommitment } from './rsta/rncp-causal-commitment.mjs';
+          import { createExecutorIdentity, createExecutionRequest, verifyExecutionRequest, createRealityReceipt, verifyRealityReceipt } from './rsta/rsta030-external-executor.mjs';
+          import { fixedExecutorPolicy, authorizeExecutionRequest, sha256Hex } from './rsta/rsta031-executor-policy.mjs';
+          const canonical=(v)=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'):JSON.stringify(v);
+          const intent=JSON.parse(fs.readFileSync('subject/subject-intent.json','utf8'));
+          const prior=JSON.parse(fs.readFileSync('rsta030-execution-receipt.json','utf8'));
+          if(prior.verdict!=='PASS') throw new Error('RSTA-030 prerequisite invalid');
+          const policy=fixedExecutorPolicy(process.env.GITHUB_REPOSITORY);
+          const commitment=intent.commitment;
+          const c=verifyCommitment(commitment,{subjectPublicKeyPem:intent.subject_public_key_pem,expectedExecutorId:policy.executor_id,expectedAction:policy.action,capabilityTokenId:intent.capability_token_id,anchorEvidenceHash:intent.anchor_evidence_hash});
+          if(c.decision!=='ACCEPT') throw new Error(`commitment rejected: ${c.code}`);
+
+          const hostile=intent.hostile_execution_hint;
+          const executor=createExecutorIdentity(policy.executor_id);
+          const expectedBody=policy.body({runId:process.env.GITHUB_RUN_ID});
+          const validRequest=createExecutionRequest({executor,requestId:`RSTA-031-REQ-${process.env.GITHUB_RUN_ID}`,commitmentHash:commitment.commitment_hash,action:policy.action,method:policy.method,path:policy.path,body:expectedBody,capabilityTokenId:intent.capability_token_id});
+          const validCheck=verifyExecutionRequest(validRequest,{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:policy.executor_id,expectedCommitmentHash:commitment.commitment_hash,expectedAction:policy.action,expectedMethod:policy.method,expectedPath:policy.path,expectedBodyHash:sha256Hex(expectedBody),expectedCapabilityTokenId:intent.capability_token_id});
+          if(validCheck.decision!=='ACCEPT') throw new Error(`valid request rejected: ${validCheck.code}`);
+          const policyCheck=authorizeExecutionRequest(validRequest,policy,expectedBody);
+          if(policyCheck.decision!=='ACCEPT') throw new Error(`policy rejected valid request: ${policyCheck.code}`);
+
+          const hostileBody=hostile.body;
+          const hostileRequest=createExecutionRequest({executor,requestId:`RSTA-031-HOSTILE-${process.env.GITHUB_RUN_ID}`,commitmentHash:commitment.commitment_hash,action:policy.action,method:hostile.method,path:hostile.path,body:hostileBody,capabilityTokenId:intent.capability_token_id});
+          const hostileCheck=authorizeExecutionRequest(hostileRequest,policy,expectedBody);
+          if(hostileCheck.decision!=='REJECT') throw new Error('hostile subject-selected endpoint/payload was authorized');
+
+          const apiResult=await new Promise((resolve,reject)=>{
+            const payload=JSON.stringify(expectedBody);
+            const req=https.request({hostname:'api.github.com',path:policy.path,method:'POST',headers:{'Authorization':`Bearer ${process.env.GH_TOKEN}`,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'rsta-031-executor-policy','Content-Type':'application/json','Content-Length':Buffer.byteLength(payload)}},res=>{let data='';res.on('data',c=>data+=c);res.on('end',()=>resolve({status:res.statusCode,body:data}));});
+            req.on('error',reject); req.write(payload); req.end();
+          });
+          if(apiResult.status!==201) throw new Error(`real external action failed: ${apiResult.status} ${apiResult.body}`);
+          const created=JSON.parse(apiResult.body);
+          const realityReceipt=createRealityReceipt({executor,request:validRequest,http:{status:apiResult.status,body:apiResult.body},responseBody:created});
+          const realityCheck=verifyRealityReceipt(realityReceipt,{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:executor.id,expectedCommitmentHash:commitment.commitment_hash,expectedRequestId:validRequest.request_id,expectedStatus:201});
+          if(realityCheck.decision!=='ACCEPT') throw new Error(`reality receipt rejected: ${realityCheck.code}`);
+
+          const maliciousButSigned=Object.freeze({...validRequest,path:hostile.path,body_hash:sha256Hex(hostileBody)});
+          const mismatch=verifyExecutionRequest(maliciousButSigned,{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:policy.executor_id,expectedCommitmentHash:commitment.commitment_hash,expectedAction:policy.action,expectedMethod:policy.method,expectedPath:policy.path,expectedBodyHash:sha256Hex(expectedBody),expectedCapabilityTokenId:intent.capability_token_id});
+          if(mismatch.decision!=='REJECT') throw new Error('executor request verifier accepted policy-conflicting target');
+
+          await new Promise((resolve,reject)=>{const req=https.request({hostname:'api.github.com',path:`${policy.path}/${created.number}`.replace('/issues/','/issues/'),method:'PATCH',headers:{'Authorization':`Bearer ${process.env.GH_TOKEN}`,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'rsta-031-executor-policy','Content-Type':'application/json'}},res=>{res.resume();res.on('end',resolve)});req.on('error',reject);req.write(JSON.stringify({state:'closed'}));req.end();});
+
+          const guarantees={commitment_verified:true,executor_policy_fixed:true,subject_endpoint_not_authoritative:true,subject_payload_not_authoritative:true,valid_request_authorized:true,hostile_endpoint_denied:true,hostile_payload_denied:true,policy_conflicting_request_denied:true,real_external_api_action:true,external_reality_receipt_verified:true};
+          const external_action={system:'GitHub REST API',method:policy.method,path:policy.path,status:apiResult.status,issue_number:created.number,html_url:created.html_url};
+          const verdict={rsta:'RSTA-031',status:'PASS',protocol:'RNCP-EXECUTOR-POLICY-v1',policy:{executor_id:policy.executor_id,action:policy.action,method:policy.method,path:policy.path,body_hash:sha256Hex(expectedBody)},hostile_subject_hint:hostile,external_action,chain:{prior_rsta030_content_address:intent.prior_rsta030_content_address,commitment_hash:commitment.commitment_hash,request_id:validRequest.request_id,event_id:realityReceipt.event_id,event_hash:realityReceipt.event_hash},guarantees,claim_boundary:'The executor policy, not the Subject request, is authoritative for endpoint and payload selection. This proves the tested integration boundary; other infrastructures need the same fixed-policy enforcement adapter.'};
+          const receipt={schema:'RNCP-EXECUTION-RECEIPT-v1',rsta:'RSTA-031',execution:{provider:'github-actions',workflow:process.env.GITHUB_WORKFLOW,run_id:Number(process.env.GITHUB_RUN_ID),job:'executor',head_commit:process.env.GITHUB_SHA,event:process.env.GITHUB_EVENT_NAME,ref:process.env.GITHUB_REF,generated_at:new Date().toISOString()},assertions:guarantees,policy:verdict.policy,hostile_subject_hint:hostile,external_action,chain:verdict.chain,verdict:'PASS'};
+          receipt.content_address=sha256Hex(receipt);
+          fs.writeFileSync('rsta031-final-verdict.json',JSON.stringify(verdict,null,2));
+          fs.writeFileSync('rsta031-execution-receipt.json',JSON.stringify(receipt,null,2));
+          fs.writeFileSync('rsta031-external-receipt.json',JSON.stringify(realityReceipt,null,2));
+          JS
+      - name: Recompute receipt content address
+        run: |
+          node <<'JS'
+          import fs from 'node:fs'; import crypto from 'node:crypto';
+          const canonical=(v)=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'):JSON.stringify(v);
+          const hash=v=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
+          const r=JSON.parse(fs.readFileSync('rsta031-execution-receipt.json','utf8')); const stored=r.content_address; const c=structuredClone(r); delete c.content_address; if(hash(c)!==stored) throw new Error('content address mismatch'); for(const [k,v] of Object.entries(r.assertions)) if(v!==true) throw new Error(`assertion failed: ${k}`); console.log(JSON.stringify({receipt_verified:true,content_address:stored},null,2));
+          JS
+      - name: Persist RSTA-031 evidence
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rsta031-final-verdict.json rsta031-execution-receipt.json rsta031-external-receipt.json
+          git commit -m 'rsta: persist RSTA-031 executor policy receipt [skip ci]'
+          git push origin HEAD:main
