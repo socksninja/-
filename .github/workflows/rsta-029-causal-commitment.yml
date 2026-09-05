@@ -1,0 +1,253 @@
+name: RSTA-029 Cross-Principal Causal Commitment Protocol
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rsta-029-causal-commitment.yml'
+      - 'rsta/rncp-causal-commitment.mjs'
+      - 'rsta028-execution-receipt.json'
+      - 'rsta028-gated-execution.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Execute causal commitment protocol
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'JS'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import {
+            createPrincipal,
+            createCommitment,
+            verifyCommitment,
+            createExecutionReceipt,
+            verifyExecutionReceipt,
+            enforceCausalPrecondition,
+            deriveNextCommitment,
+            sha256Hex,
+          } from './rsta/rncp-causal-commitment.mjs';
+
+          const canonical = (value) => value && typeof value === 'object'
+            ? (Array.isArray(value)
+              ? '[' + value.map(canonical).join(',') + ']'
+              : '{' + Object.keys(value).sort().map((key) => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}')
+            : JSON.stringify(value);
+          const hash = (value) => crypto.createHash('sha256').update(canonical(value)).digest('hex');
+
+          const priorReceipt = JSON.parse(fs.readFileSync('rsta028-execution-receipt.json', 'utf8'));
+          const priorUnsigned = structuredClone(priorReceipt); delete priorUnsigned.content_address;
+          if (hash(priorUnsigned) !== priorReceipt.content_address) throw new Error('RSTA-028 receipt integrity failure');
+          if (priorReceipt.verdict !== 'PASS' || priorReceipt.assertions?.persistent_replay_rejected !== true) throw new Error('RSTA-028 prerequisite not satisfied');
+
+          const buyer = createPrincipal('SUBJECT-BUYER-A');
+          const executor = createPrincipal('EXECUTOR-B');
+          const downstream = createPrincipal('DOWNSTREAM-SYSTEM-C');
+          const action = 'EXECUTE_REALITY_BOUND_ACTION';
+          const commitmentId = 'RSTA-029-CAUSAL-COMMITMENT-001';
+          const capabilityTokenId = priorReceipt.capability.token_id;
+          const anchorEvidenceHash = priorReceipt.capability.anchor_evidence_hash;
+
+          const commitment = createCommitment({
+            subject: buyer,
+            executorId: executor.id,
+            commitmentId,
+            action,
+            prerequisites: { capability_token_id: capabilityTokenId, anchor_evidence_hash: anchorEvidenceHash },
+          });
+
+          const accepted = verifyCommitment(commitment, {
+            expectedExecutorId: executor.id,
+            expectedAction: action,
+            capabilityTokenId,
+            anchorEvidenceHash,
+          });
+          if (accepted.decision !== 'ACCEPT') throw new Error(`valid commitment rejected: ${accepted.code}`);
+
+          const noCommitment = enforceCausalPrecondition(null, null, {});
+          const missingCommitmentRejected = noCommitment.decision === 'REJECT';
+          if (!missingCommitmentRejected) throw new Error('execution path accepted without commitment');
+
+          const forgedCommitment = { ...commitment, action: 'FORGED_REALITY_ACTION' };
+          const forgedVerdict = verifyCommitment(forgedCommitment, {
+            expectedExecutorId: executor.id,
+            expectedAction: action,
+            capabilityTokenId,
+            anchorEvidenceHash,
+          });
+          const forgedRejected = forgedVerdict.decision === 'REJECT';
+          if (!forgedRejected) throw new Error('forged commitment accepted');
+
+          const wrongExecutorVerdict = verifyCommitment(commitment, {
+            expectedExecutorId: 'EXECUTOR-EVIL',
+            expectedAction: action,
+            capabilityTokenId,
+            anchorEvidenceHash,
+          });
+          const wrongExecutorRejected = wrongExecutorVerdict.decision === 'REJECT' && wrongExecutorVerdict.code === 'EXECUTOR_MISMATCH';
+          if (!wrongExecutorRejected) throw new Error('wrong executor was not rejected');
+
+          const executionReceipt = createExecutionReceipt({
+            executor,
+            commitment,
+            result: {
+              reality_event: 'EXECUTOR-B-COMPLETED-ACTION',
+              resource_state: 'COMMITTED_ACTION_APPLIED',
+            },
+          });
+          const receiptAccepted = verifyExecutionReceipt(executionReceipt, {
+            expectedExecutorId: executor.id,
+            expectedCommitmentHash: commitment.commitment_hash,
+            expectedEventId: `${commitmentId}:EXECUTED`,
+          });
+          if (receiptAccepted.decision !== 'ACCEPT') throw new Error(`execution receipt rejected: ${receiptAccepted.code}`);
+
+          const tamperedReceipt = { ...executionReceipt, result: { reality_event: 'TAMPERED' } };
+          const tamperVerdict = verifyExecutionReceipt(tamperedReceipt, {
+            expectedExecutorId: executor.id,
+            expectedCommitmentHash: commitment.commitment_hash,
+            expectedEventId: `${commitmentId}:EXECUTED`,
+          });
+          const tamperRejected = tamperVerdict.decision === 'REJECT';
+          if (!tamperRejected) throw new Error('tampered execution receipt accepted');
+
+          const chainedCommitment = deriveNextCommitment({
+            subject: downstream,
+            executorId: 'EXECUTOR-D',
+            commitmentId: 'RSTA-029-CAUSAL-COMMITMENT-002',
+            action: 'PROCESS_FULFILLED_EVENT',
+            prerequisites: { capability_token_id: capabilityTokenId, anchor_evidence_hash: anchorEvidenceHash },
+            fulfilledReceipt: executionReceipt,
+          });
+          const chainedAccepted = enforceCausalPrecondition(chainedCommitment, executionReceipt, {
+            expectedExecutorId: 'EXECUTOR-D',
+            expectedAction: 'PROCESS_FULFILLED_EVENT',
+            capabilityTokenId,
+            anchorEvidenceHash,
+            requirePredecessorReceipt: true,
+            predecessorExecutorId: executor.id,
+            predecessorCommitmentHash: commitment.commitment_hash,
+            predecessorEventId: `${commitmentId}:EXECUTED`,
+          });
+          if (chainedAccepted.decision !== 'ACCEPT') throw new Error(`causal successor rejected: ${chainedAccepted.code}`);
+
+          const reordered = structuredClone(chainedCommitment); reordered.predecessor_event_hash = null;
+          const reorderedVerdict = enforceCausalPrecondition(reordered, executionReceipt, {
+            expectedExecutorId: 'EXECUTOR-D',
+            expectedAction: 'PROCESS_FULFILLED_EVENT',
+            capabilityTokenId,
+            anchorEvidenceHash,
+            requirePredecessorReceipt: true,
+            predecessorExecutorId: executor.id,
+            predecessorCommitmentHash: commitment.commitment_hash,
+            predecessorEventId: `${commitmentId}:EXECUTED`,
+          });
+          const orderingRejected = reorderedVerdict.decision === 'REJECT' && reorderedVerdict.code === 'PREDECESSOR_EVENT_HASH_MISMATCH';
+          if (!orderingRejected) throw new Error('causal ordering bypass detected');
+
+          const gatedExecution = {
+            protocol: 'RNCP-CAUSAL-COMMITMENT-v1',
+            execution_policy: 'NO_VALID_COMMITMENT_NO_EXECUTION',
+            subject_id: buyer.id,
+            executor_id: executor.id,
+            commitment_id: commitment.commitment_id,
+            commitment_hash: commitment.commitment_hash,
+            action,
+            prior_capability_token_id: capabilityTokenId,
+            anchor_evidence_hash: anchorEvidenceHash,
+            execution_event_hash: executionReceipt.event_hash,
+            state: executionReceipt.state,
+          };
+
+          const verdict = {
+            rsta: 'RSTA-029',
+            status: 'PASS',
+            protocol: 'RNCP-CAUSAL-COMMITMENT-v1',
+            guarantees: {
+              no_valid_commitment_no_execution: missingCommitmentRejected,
+              subject_signature_verified: accepted.decision === 'ACCEPT',
+              executor_binding_enforced: wrongExecutorRejected,
+              forged_commitment_rejected: forgedRejected,
+              execution_receipt_verified: receiptAccepted.decision === 'ACCEPT',
+              tampered_receipt_rejected: tamperRejected,
+              causal_successor_requires_predecessor_receipt: chainedAccepted.decision === 'ACCEPT',
+              causal_ordering_enforced: orderingRejected,
+            },
+            chain: {
+              subject: buyer.id,
+              executor: executor.id,
+              action,
+              commitment_id: commitment.commitment_id,
+              commitment_hash: commitment.commitment_hash,
+              execution_event_id: executionReceipt.event_id,
+              execution_event_hash: executionReceipt.event_hash,
+              successor_commitment_id: chainedCommitment.commitment_id,
+              successor_predecessor_event_hash: chainedCommitment.predecessor_event_hash,
+            },
+            claim_boundary: 'This demonstrates cryptographically bound causal gating across distinct principals in the tested protocol runtime. It does not by itself make remote third-party infrastructure trustworthy or guarantee physical-world execution semantics.',
+          };
+
+          const receiptPayload = {
+            schema: 'RNCP-EXECUTION-RECEIPT-v1',
+            rsta: 'RSTA-029',
+            execution: {
+              provider: 'github-actions',
+              workflow: process.env.GITHUB_WORKFLOW,
+              run_id: Number(process.env.GITHUB_RUN_ID),
+              run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT),
+              job: 'verify',
+              head_commit: process.env.GITHUB_SHA,
+              event: process.env.GITHUB_EVENT_NAME,
+              ref: process.env.GITHUB_REF,
+              generated_at: new Date().toISOString(),
+            },
+            assertions: verdict.guarantees,
+            chain: verdict.chain,
+            policy: 'NO_VALID_COMMITMENT_NO_EXECUTION',
+            verdict: 'PASS',
+          };
+          receiptPayload.content_address = hash(receiptPayload);
+
+          fs.writeFileSync('rsta029-final-verdict.json', JSON.stringify(verdict, null, 2));
+          fs.writeFileSync('rsta029-causal-chain.json', JSON.stringify({ commitment, execution_receipt: executionReceipt, successor_commitment: chainedCommitment, gated_execution: gatedExecution }, null, 2));
+          fs.writeFileSync('rsta029-execution-receipt.json', JSON.stringify(receiptPayload, null, 2));
+          console.log(JSON.stringify(verdict, null, 2));
+          JS
+
+      - name: Recompute receipt before commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'JS'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const canonical=(v)=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'):JSON.stringify(v);
+          const hash=v=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
+          const r=JSON.parse(fs.readFileSync('rsta029-execution-receipt.json','utf8')); const stored=r.content_address; const copy=structuredClone(r); delete copy.content_address;
+          if(stored!==hash(copy))throw new Error('receipt content address mismatch');
+          for(const [k,v] of Object.entries(r.assertions))if(v!==true)throw new Error(`assertion failed: ${k}`);
+          console.log(JSON.stringify({receipt_verified:true,content_address:stored},null,2));
+          JS
+
+      - name: Persist RSTA-029 evidence on main
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rsta029-final-verdict.json rsta029-causal-chain.json rsta029-execution-receipt.json
+          git commit -m 'rsta: persist RSTA-029 causal commitment receipt [skip ci]'
+          git push origin HEAD:main
