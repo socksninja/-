@@ -7,7 +7,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "97efe504160e3b1b6e6d33ee022c251097398df8ba173b81592ef904b13c8124"
+    "body_hash": "f826e9a6c64f3ef8e0d4561c5235ebe957f140df28afa34bfba061250d93237f"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -22,15 +22,15 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 303,
-    "html_url": "https://github.com/socksninja/-/issues/303"
+    "issue_number": 320,
+    "html_url": "https://github.com/socksninja/-/issues/320"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "507b6ce1a4e45b7c8afa2b1d2b9e40475b94884c09dd8952882dfe73cbcc4c45",
-    "request_id": "RSTA-031-REQ-33981717535",
-    "event_id": "RSTA-031-REQ-33981717535:REALITY",
-    "event_hash": "a14b996cafa83c2d414f6f7b15dde108a6ee99a5960e0917bdac04c60744ffa2"
+    "commitment_hash": "ccfea340e10f1425918ca6d0df7560e0b1e588de3867c21175cb18d2cf67a6ad",
+    "request_id": "RSTA-031-REQ-33981792273",
+    "event_id": "RSTA-031-REQ-33981792273:REALITY",
+    "event_hash": "59e1edaf792613c18616d7fe03421d523e8c473f8acb8baffa1eaaaa683101cc"
   },
   "guarantees": {
     "commitment_verified": true,
