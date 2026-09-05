@@ -14,9 +14,9 @@
       "external_fact": {
         "source": "drand-League-of-Entropy-default",
         "chain": "8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce",
-        "round": 6439579,
-        "randomness": "bdcfd9ace1edc75afd2ac0b64c3b479770402871748147b03ff252f33de061aa",
-        "signature": "89aaee594de4a869300372248a9501fdc3bd4ff1c877f505c359b22a58ad7ff305cc0089b6a99faed54d75c79eb4eb7a187cdc356f8d87bf826f2c3106ca86f74699e188cf294fad55b81478972327cd8deca24a2ce284fc6673b6639e20d240",
+        "round": 6439659,
+        "randomness": "960dd9ee5dc3bf2b1d903d39ea4c907866df47cfc6125c278ad9ddc25d6aa963",
+        "signature": "ad99fa2c9eaec80cc22858bede6b4fdead9461d5a3f6389f01c27613a5d7dbfbe0be9a5d6778a6f98dd6417e88cf17f1178831a89214dc6c5ef79b0a9b496880cd2d459bfb494f28e5e5c35be20aa5a48e1db7edd0504b1781f32cbcc729227a",
         "relays": [
           "https://api.drand.sh",
           "https://api2.drand.sh",
@@ -30,16 +30,16 @@
         "cross_relay_agreement": true
       }
     },
-    "proof": "79429798833f324e11f13168ffbd7941eca7a3a7a833ba16b7b9444ff77a825c",
-    "evidence_hash": "115d372581278da88321db52a55d6f07de3fd935de5cece271a8a2c89631b022",
+    "proof": "1c29535e6d99c9a6524fdd8f10ec947c17458c9cc5b2c5b5c7e554d41346b3d0",
+    "evidence_hash": "4d3640065a261d8f5991b8f6b884b26c09e9ca61d327309a4108d61945ce6123",
     "anchor_status": "VERIFIED_EXTERNAL_FACT"
   },
   "raw_beacon": {
-    "round": 6439579,
-    "randomness": "bdcfd9ace1edc75afd2ac0b64c3b479770402871748147b03ff252f33de061aa",
-    "signature": "89aaee594de4a869300372248a9501fdc3bd4ff1c877f505c359b22a58ad7ff305cc0089b6a99faed54d75c79eb4eb7a187cdc356f8d87bf826f2c3106ca86f74699e188cf294fad55b81478972327cd8deca24a2ce284fc6673b6639e20d240",
-    "previous_signature": "b8d11bd997dbc2162c2baffd8ec5ab4c012168f2b7b34e24dc7f2541e9a8646e396f1605d6e87e7a617e9408adb9e93214f9a28f2d4ee1d9519b767814754775c72cf72e81386860a6bfe387d02a2a8f3ba39304ff43773a0102606dfdaba407",
-    "_url": "https://api.drand.sh/8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce/public/6439579"
+    "round": 6439659,
+    "randomness": "960dd9ee5dc3bf2b1d903d39ea4c907866df47cfc6125c278ad9ddc25d6aa963",
+    "signature": "ad99fa2c9eaec80cc22858bede6b4fdead9461d5a3f6389f01c27613a5d7dbfbe0be9a5d6778a6f98dd6417e88cf17f1178831a89214dc6c5ef79b0a9b496880cd2d459bfb494f28e5e5c35be20aa5a48e1db7edd0504b1781f32cbcc729227a",
+    "previous_signature": "b97bf22ce4f01526e2151ff3d7ce51c1023b0b66089ee1320d7f02c498e9030f7157beb1c522de76f4372df7943cc4f6198a618d76f697021127ebabcbb6d7fa75793eceeb2db07ea41743d585f5d19b9c7689fe322027a425a6bc588f063da5",
+    "_url": "https://api.drand.sh/8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce/public/6439659"
   },
   "relays": [
     "https://api.drand.sh",
