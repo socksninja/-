@@ -1,0 +1,1 @@
+RSTA-030 External Executor Enforcement: real HTTP execution boundary bound to RNCP commitment and capability, with signed external reality receipt and fail-closed bypass/tamper verification.
