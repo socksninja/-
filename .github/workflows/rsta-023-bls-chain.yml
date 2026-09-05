@@ -43,8 +43,9 @@ jobs:
           const GENESIS=1595431050;
           const SCHEME='pedersen-bls-chained';
 
-          const h=b=>Buffer.from(sha256(b));
-          const be64=n=>{const b=Buffer.alloc(8);b.writeBigUInt64BE(BigInt(n));return b;};
+          const hexBytes=hx=>Uint8Array.from(Buffer.from(hx,'hex'));
+          const h=b=>new Uint8Array(sha256(b));
+          const be64=n=>{const b=new Uint8Array(8);new DataView(b.buffer).setBigUint64(0,BigInt(n));return b;};
           const canonical=v=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'):JSON.stringify(v);
           const shaHex=v=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
 
@@ -54,10 +55,10 @@ jobs:
             const urls=round==='latest'?[`${relay}/${CHAIN}/public/latest`,`${relay}/public/latest`]:[`${relay}/${CHAIN}/public/${round}`,`${relay}/public/${round}`];
             let last;for(const u of urls){try{return {...await getJson(u),_url:u};}catch(e){last=e;}}throw last;
           }
-          function verifyRandomness(b){return Buffer.from(b.randomness,'hex').equals(h(Buffer.from(b.signature,'hex')));}
+          function verifyRandomness(b){return Buffer.from(b.randomness,'hex').equals(Buffer.from(h(hexBytes(b.signature))));}
           function verifyBlsChained(b){
-            const message=h(Buffer.concat([Buffer.from(b.previous_signature,'hex'),be64(b.round)]));
-            return bls.longSignatures.verify(b.signature,message,PINNED_PUBKEY);
+            const message=h(Buffer.concat([Buffer.from(hexBytes(b.previous_signature)),Buffer.from(be64(b.round))]));
+            return bls.longSignatures.verify(hexBytes(b.signature),message,hexBytes(PINNED_PUBKEY));
           }
 
           const samples=await Promise.all(RELAYS.map(async relay=>({relay,latest:await getBeacon(relay)})));
