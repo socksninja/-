@@ -20,9 +20,9 @@ jobs:
       - name: Install isolated verification dependencies
         run: |
           set -euxo pipefail
-          rm -rf .rsta023
-          mkdir .rsta023
-          cd .rsta023
+          rm -rf rsta023-work
+          mkdir rsta023-work
+          cd rsta023-work
           npm init -y
           npm config set registry https://registry.npmjs.org/
           npm install --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeout=1000 --fetch-retry-maxtimeout=5000 @noble/curves@2.3.0 @noble/hashes@2.4.0
@@ -30,7 +30,7 @@ jobs:
       - name: Fetch 3 relays and verify 3-round BLS chain
         run: |
           set -euo pipefail
-          cd .rsta023
+          cd rsta023-work
           node > ../rsta023-final-verdict.json <<'JS'
           import crypto from 'node:crypto';
           import {bls12_381 as bls} from '@noble/curves/bls12-381.js';
