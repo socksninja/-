@@ -1,0 +1,37 @@
+{
+  "rsta": "RSTA-027",
+  "status": "PASS",
+  "invariant": "CAPABILITY_UNLOCKED requires a freshly fetched, cross-relay-consistent, BLS-verified external fact bound into the anchor proof",
+  "external_fact": {
+    "source": "drand-League-of-Entropy-default",
+    "chain": "8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce",
+    "round": 6439579,
+    "randomness": "bdcfd9ace1edc75afd2ac0b64c3b479770402871748147b03ff252f33de061aa",
+    "signature": "89aaee594de4a869300372248a9501fdc3bd4ff1c877f505c359b22a58ad7ff305cc0089b6a99faed54d75c79eb4eb7a187cdc356f8d87bf826f2c3106ca86f74699e188cf294fad55b81478972327cd8deca24a2ce284fc6673b6639e20d240",
+    "relay_count": 3
+  },
+  "verification": {
+    "randomness_hash_binding": true,
+    "bls_signature": true,
+    "cross_relay_agreement": true,
+    "pinned_public_key": "868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31"
+  },
+  "anchor": {
+    "type": "RNCP-VERIFIED-ANCHOR",
+    "version": "RNCP-VERIFIED-ANCHOR-v1",
+    "proof": "79429798833f324e11f13168ffbd7941eca7a3a7a833ba16b7b9444ff77a825c",
+    "evidence_hash": "115d372581278da88321db52a55d6f07de3fd935de5cece271a8a2c89631b022",
+    "status": "VERIFIED_EXTERNAL_FACT"
+  },
+  "adversarial_controls": {
+    "colluder_claim_not_equal_external_fact": true,
+    "tampered_anchor_rejected": true,
+    "replay_rejected": true
+  },
+  "capability_gate": {
+    "decision": "UNLOCKED",
+    "reason": "FRESH_BLS_VERIFIED_EXTERNAL_FACT_BOUND_TO_ANCHOR"
+  },
+  "claim_boundary": "This proves resistance to executor-chosen false facts under this tested beacon model. It does not make a generic 2-of-3 quorum Byzantine-safe; the external fact source is an additional trust boundary.",
+  "evidence_hash": "bcd944c6393a846941bcaa84e302f1a9bc94a0bff31b67244e649b8989589a76"
+}

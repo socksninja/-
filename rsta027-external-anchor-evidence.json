@@ -1,0 +1,49 @@
+{
+  "anchor": {
+    "type": "RNCP-VERIFIED-ANCHOR",
+    "version": "RNCP-VERIFIED-ANCHOR-v1",
+    "anchor_core": {
+      "commitment": {
+        "protocol_version": "RNCP-PORTABLE-1",
+        "commitment_id": "RSTA-027-EXTERNAL-FACT-001",
+        "action": "POSTMAN_ECHO",
+        "payload": {
+          "message": "RSTA-027 external-fact-bound execution"
+        }
+      },
+      "external_fact": {
+        "source": "drand-League-of-Entropy-default",
+        "chain": "8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce",
+        "round": 6439579,
+        "randomness": "bdcfd9ace1edc75afd2ac0b64c3b479770402871748147b03ff252f33de061aa",
+        "signature": "89aaee594de4a869300372248a9501fdc3bd4ff1c877f505c359b22a58ad7ff305cc0089b6a99faed54d75c79eb4eb7a187cdc356f8d87bf826f2c3106ca86f74699e188cf294fad55b81478972327cd8deca24a2ce284fc6673b6639e20d240",
+        "relays": [
+          "https://api.drand.sh",
+          "https://api2.drand.sh",
+          "https://api3.drand.sh"
+        ],
+        "source_authentication": "BLS12-381_THRESHOLD_SIGNATURE"
+      },
+      "fact_verification": {
+        "randomness_hash_binding": true,
+        "bls_signature": true,
+        "cross_relay_agreement": true
+      }
+    },
+    "proof": "79429798833f324e11f13168ffbd7941eca7a3a7a833ba16b7b9444ff77a825c",
+    "evidence_hash": "115d372581278da88321db52a55d6f07de3fd935de5cece271a8a2c89631b022",
+    "anchor_status": "VERIFIED_EXTERNAL_FACT"
+  },
+  "raw_beacon": {
+    "round": 6439579,
+    "randomness": "bdcfd9ace1edc75afd2ac0b64c3b479770402871748147b03ff252f33de061aa",
+    "signature": "89aaee594de4a869300372248a9501fdc3bd4ff1c877f505c359b22a58ad7ff305cc0089b6a99faed54d75c79eb4eb7a187cdc356f8d87bf826f2c3106ca86f74699e188cf294fad55b81478972327cd8deca24a2ce284fc6673b6639e20d240",
+    "previous_signature": "b8d11bd997dbc2162c2baffd8ec5ab4c012168f2b7b34e24dc7f2541e9a8646e396f1605d6e87e7a617e9408adb9e93214f9a28f2d4ee1d9519b767814754775c72cf72e81386860a6bfe387d02a2a8f3ba39304ff43773a0102606dfdaba407",
+    "_url": "https://api.drand.sh/8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce/public/6439579"
+  },
+  "relays": [
+    "https://api.drand.sh",
+    "https://api2.drand.sh",
+    "https://api3.drand.sh"
+  ]
+}
