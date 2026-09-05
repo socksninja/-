@@ -1,0 +1,69 @@
+{
+  "schema": "RNCP-EXECUTION-RECEIPT-v1",
+  "rsta": "RSTA-037",
+  "protocol": "RNCP-CROSS-PROVIDER-LIVE-v1",
+  "commitment": {
+    "protocol_version": "RNCP-PORTABLE-1",
+    "commitment_id": "RSTA-037-33981717551",
+    "action": "RSTA037_CROSS_PROVIDER_PROBE",
+    "payload": {
+      "run_id": 33981717551,
+      "nonce": "rsta037-33981717551"
+    }
+  },
+  "providers": {
+    "github": {
+      "protocol_version": "RNCP-PORTABLE-1",
+      "commitment_id": "RSTA-037-33981717551",
+      "commitment_hash": "0e6a5fe90eb7aaaa854b5b8037f15e1539a20f0222d335e0cd2e9f3c52f125d4",
+      "execution_id": "github-actions:RSTA-037-33981717551",
+      "executor_id": "github-actions",
+      "executor_revision": "fde28d273063aacf45f2ce1d6ffce5a936cadade",
+      "observed": {
+        "status": "EXECUTED",
+        "action": "RSTA037_CROSS_PROVIDER_PROBE",
+        "payload": {
+          "run_id": 33981717551,
+          "nonce": "rsta037-33981717551"
+        },
+        "external_issue": {
+          "number": 299,
+          "url": "https://github.com/socksninja/-/issues/299"
+        }
+      },
+      "receipt_hash": "ff5ad433404755815ff1c40207283f0dbfc759d909afbf867804e7d11fdfad8e"
+    },
+    "vercel": {
+      "protocol_version": "RNCP-PORTABLE-1",
+      "commitment_id": "RSTA-037-33981717551",
+      "commitment_hash": "0e6a5fe90eb7aaaa854b5b8037f15e1539a20f0222d335e0cd2e9f3c52f125d4",
+      "execution_id": "external-executor-vercel-rsta016:RSTA-037-33981717551",
+      "executor_id": "external-executor-vercel-rsta016",
+      "implementation": "standalone-node-next-route",
+      "executor_repository": "socksninja/-",
+      "executor_revision": "bc3b8288b9ff5638a17da537b91078701352faa1",
+      "transport": "GET_QUERY",
+      "observed": {
+        "status": "EXECUTED",
+        "action": "RSTA037_CROSS_PROVIDER_PROBE",
+        "payload": {
+          "run_id": 33981717551,
+          "nonce": "rsta037-33981717551"
+        }
+      },
+      "receipt_hash": "99db2b1d8769b1edfc1b9edbdbdadd2c2b79efa6bd92ef60b8ddd463c8595002"
+    }
+  },
+  "checks": {
+    "shared_commitment_hash": true,
+    "github_real_external_action": true,
+    "github_receipt_accepted": true,
+    "vercel_live_executor_accepted": true,
+    "same_portable_verifier_core": true,
+    "provider_identities_distinct": true,
+    "tampered_receipt_rejected": true,
+    "replay_rejected": true
+  },
+  "verdict": "PASS",
+  "content_address": "23af2da1cf97a4cc087d31036bce14db96e8f46a53cb90d632d375fd39460cd0"
+}
