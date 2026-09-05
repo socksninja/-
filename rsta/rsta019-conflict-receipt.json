@@ -1,0 +1,43 @@
+{
+  "rsta": "RSTA-019",
+  "commitment": {
+    "protocol_version": "RNCP-PORTABLE-1",
+    "commitment_id": "RSTA-016-PORTABLE-001",
+    "action": "POSTMAN_ECHO",
+    "payload": {
+      "message": "RSTA-016 external execution"
+    }
+  },
+  "executor": "github-actions-conflict-executor-rsta019",
+  "receipt": {
+    "protocol_version": "RNCP-PORTABLE-1",
+    "commitment_id": "RSTA-016-PORTABLE-001",
+    "commitment_hash": "5eecca09351dd256a0f18680f30ebb41327db19ecfcf0fbd4398abcdbca529dd",
+    "execution_id": "github-actions-conflict-executor-rsta019:RSTA-016-PORTABLE-001",
+    "executor_id": "github-actions-conflict-executor-rsta019",
+    "implementation": "standalone-python-github-actions-conflict",
+    "executor_repository": "socksninja/-",
+    "executor_revision": "90ad93bc007f91171dfc954c94fcf95f6423b8a5",
+    "transport": "GITHUB_ACTIONS",
+    "observed": {
+      "status": "EXECUTED",
+      "action": "POSTMAN_ECHO",
+      "payload": {
+        "message": "CONFLICT-INJECTED"
+      }
+    },
+    "decision": "ACCEPT",
+    "capability": "EXECUTED",
+    "receipt_hash": "5c7179689874163fc278352653a5e4046a13f1af440ecb7d267b82d46f98e6d6"
+  },
+  "conflict_injection": {
+    "type": "OBSERVED_PAYLOAD_MUTATION",
+    "expected": {
+      "message": "RSTA-016 external execution"
+    },
+    "actual": {
+      "message": "CONFLICT-INJECTED"
+    }
+  },
+  "execution_run_url": "https://github.com/socksninja/-/actions/runs/33968049368"
+}
