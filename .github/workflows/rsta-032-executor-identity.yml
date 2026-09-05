@@ -1,0 +1,125 @@
+name: RSTA-032 Executor Identity Trust Root
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  subject:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Produce commitment without executor identity authority
+        run: |
+          set -euo pipefail
+          node > subject-intent.json <<'JS'
+          import fs from 'node:fs';
+          import { createPrincipal, createCommitment } from './rsta/rncp-causal-commitment.mjs';
+          const prior=JSON.parse(fs.readFileSync('rsta031-execution-receipt.json','utf8'));
+          if(prior.verdict!=='PASS') throw new Error('RSTA-031 prerequisite invalid');
+          const subject=createPrincipal('SUBJECT-RSTA-032');
+          const commitment=createCommitment({subject,executorId:'EXTERNAL-GITHUB-EXECUTOR',commitmentId:`RSTA-032-${process.env.GITHUB_RUN_ID}`,action:'CREATE_GITHUB_ISSUE',prerequisites:{capability_token_id:'RSTA-031-CAUSAL-PREREQUISITE',anchor_evidence_hash:prior.content_address},predecessorEventHash:prior.chain.event_hash});
+          console.log(JSON.stringify({protocol:'RNCP-RSTA-032-EXECUTOR-IDENTITY-v1',subject_public_key_pem:subject.publicKeyPem,commitment,expected_executor_id:'EXTERNAL-GITHUB-EXECUTOR',anchor_evidence_hash:prior.content_address},null,2));
+          JS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rsta032-subject-intent
+          path: subject-intent.json
+
+  executor:
+    needs: subject
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: rsta032-subject-intent
+          path: subject
+      - name: Verify GitHub OIDC trust root and execute real external action
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OIDC_AUDIENCE: rsta-032
+        run: |
+          set -euo pipefail
+          TOKEN_JSON=$(curl -fsSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${OIDC_AUDIENCE}")
+          printf '%s' "$TOKEN_JSON" > oidc-token-response.json
+          OIDC_TOKEN=$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('oidc-token-response.json','utf8')).value)")
+          export OIDC_TOKEN
+          export EXPECTED_REPOSITORY="$GITHUB_REPOSITORY"
+          export EXPECTED_WORKFLOW_REF="$GITHUB_REPOSITORY/.github/workflows/rsta-032-executor-identity.yml@refs/heads/main"
+          export EXPECTED_REF="$GITHUB_REF"
+          export EXPECTED_REPOSITORY_ID="$(node -e "const fs=require('fs'); const x=JSON.parse(fs.readFileSync('subject/subject-intent.json')); process.stdout.write(String(process.env.GITHUB_REPOSITORY_ID||''))")"
+          node <<'JS'
+          import fs from 'node:fs'; import https from 'node:https'; import crypto from 'node:crypto';
+          import { verifyCommitment } from './rsta/rncp-causal-commitment.mjs';
+          import { createExecutorIdentity, createExecutionRequest, verifyExecutionRequest, createRealityReceipt, verifyRealityReceipt } from './rsta/rsta030-external-executor.mjs';
+          import { fixedExecutorPolicy, sha256Hex } from './rsta/rsta031-executor-policy.mjs';
+          import { parseJwt, verifyJwtRs256, authorizeExecutorIdentity, createAttestation, GITHUB_OIDC_ISSUER } from './rsta/rsta032-executor-identity.mjs';
+
+          const intent=JSON.parse(fs.readFileSync('subject/subject-intent.json','utf8')); const prior=JSON.parse(fs.readFileSync('rsta031-execution-receipt.json','utf8'));
+          const policy=fixedExecutorPolicy(process.env.GITHUB_REPOSITORY);
+          const c=verifyCommitment(intent.commitment,{subjectPublicKeyPem:intent.subject_public_key_pem,expectedExecutorId:policy.executor_id,expectedAction:policy.action,capabilityTokenId:'RSTA-031-CAUSAL-PREREQUISITE',anchorEvidenceHash:intent.anchor_evidence_hash});
+          if(c.decision!=='ACCEPT') throw new Error(`commitment rejected: ${c.code}`);
+
+          const parsed=parseJwt(process.env.OIDC_TOKEN);
+          const config=await new Promise((resolve,reject)=>https.get('https://token.actions.githubusercontent.com/.well-known/jwks',res=>{let d='';res.on('data',x=>d+=x);res.on('end',()=>{if(res.statusCode!==200)reject(new Error(`jwks status ${res.statusCode}`)); else resolve(JSON.parse(d));});}).on('error',reject));
+          const jwk=config.keys.find(k=>k.kid===parsed.header.kid);
+          if(!jwk) throw new Error('OIDC signing key not found');
+          const jwtCheck=verifyJwtRs256(process.env.OIDC_TOKEN,jwk);
+          if(jwtCheck.decision!=='ACCEPT') throw new Error(`OIDC cryptographic verification failed: ${jwtCheck.code}`);
+          const claims=jwtCheck.payload;
+          const expected={executor_id:policy.executor_id,audience:process.env.OIDC_AUDIENCE,repository:process.env.GITHUB_REPOSITORY,repository_id:process.env.GITHUB_REPOSITORY_ID||claims.repository_id,repository_visibility:'public',workflow_ref:process.env.EXPECTED_WORKFLOW_REF,ref:process.env.GITHUB_REF,ref_type:'branch',event_name:process.env.GITHUB_EVENT_NAME,runner_environment:'github-hosted'};
+          const identity=authorizeExecutorIdentity(claims,expected);
+          if(identity.decision!=='ACCEPT') throw new Error(`Executor identity denied: ${identity.code}`);
+
+          const unknownClaims={...claims,repository:'attacker/unknown-repo'};
+          if(authorizeExecutorIdentity(unknownClaims,expected).decision!=='REJECT') throw new Error('unknown executor identity accepted');
+          const rotatedClaims={...claims,workflow_ref:expected.repository+'/.github/workflows/rsta-999-imposter.yml@refs/heads/main'};
+          if(authorizeExecutorIdentity(rotatedClaims,expected).decision!=='REJECT') throw new Error('changed executor workflow identity accepted');
+          const changedAudience={...claims,aud:'rsta-evil'};
+          if(authorizeExecutorIdentity(changedAudience,expected).decision!=='REJECT') throw new Error('changed audience accepted');
+          const attestation=createAttestation({token:process.env.OIDC_TOKEN,claims,executorId:identity.executor_id});
+
+          const executor=createExecutorIdentity(policy.executor_id); const body=policy.body({runId:process.env.GITHUB_RUN_ID});
+          const request=createExecutionRequest({executor,requestId:`RSTA-032-REQ-${process.env.GITHUB_RUN_ID}`,commitmentHash:intent.commitment.commitment_hash,action:policy.action,method:policy.method,path:policy.path,body,capabilityTokenId:'RSTA-031-CAUSAL-PREREQUISITE'});
+          const reqCheck=verifyExecutionRequest(request,{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:policy.executor_id,expectedCommitmentHash:intent.commitment.commitment_hash,expectedAction:policy.action,expectedMethod:policy.method,expectedPath:policy.path,expectedBodyHash:sha256Hex(body),expectedCapabilityTokenId:'RSTA-031-CAUSAL-PREREQUISITE'});
+          if(reqCheck.decision!=='ACCEPT') throw new Error(`request denied ${reqCheck.code}`);
+
+          const apiResult=await new Promise((resolve,reject)=>{const payload=JSON.stringify(body);const req=https.request({hostname:'api.github.com',path:policy.path,method:'POST',headers:{'Authorization':`Bearer ${process.env.GH_TOKEN}`,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'rsta-032-oidc-executor','Content-Type':'application/json','Content-Length':Buffer.byteLength(payload)}},res=>{let data='';res.on('data',c=>data+=c);res.on('end',()=>resolve({status:res.statusCode,body:data}));});req.on('error',reject);req.write(payload);req.end();});
+          if(apiResult.status!==201) throw new Error(`real external action failed: ${apiResult.status} ${apiResult.body}`); const created=JSON.parse(apiResult.body);
+          const realityReceipt=createRealityReceipt({executor,request,http:{status:apiResult.status,body:apiResult.body},responseBody:created});
+          realityReceipt.executor_attestation_hash=sha256Hex(attestation);
+          if(verifyRealityReceipt(realityReceipt,{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:executor.id,expectedCommitmentHash:intent.commitment.commitment_hash,expectedRequestId:request.request_id,expectedStatus:201}).decision!=='ACCEPT') throw new Error('reality receipt verification failed');
+          const guarantees={commitment_verified:true,oidc_token_present:true,oidc_signature_valid:true,oidc_issuer_valid:claims.iss===GITHUB_OIDC_ISSUER,oidc_audience_valid:true,oidc_repository_valid:true,oidc_repository_id_valid:true,oidc_workflow_valid:true,oidc_ref_valid:true,executor_identity_admitted:true,unknown_identity_denied:true,changed_executor_workflow_denied:true,changed_audience_denied:true,real_external_api_action:true,external_reality_receipt_verified:true,receipt_binds_executor_attestation:realityReceipt.executor_attestation_hash===sha256Hex(attestation)};
+          const external_action={system:'GitHub REST API',method:policy.method,path:policy.path,status:apiResult.status,issue_number:created.number,html_url:created.html_url};
+          const verdict={rsta:'RSTA-032',status:'PASS',protocol:'RNCP-EXECUTOR-IDENTITY-v1',trust_root:{issuer:GITHUB_OIDC_ISSUER,audience:process.env.OIDC_AUDIENCE,repository:expected.repository,repository_id:claims.repository_id,workflow_ref:expected.workflow_ref,ref:expected.ref,runner_environment:expected.runner_environment},executor_identity:identity,attestation,external_action,chain:{prior_rsta031_content_address:intent.anchor_evidence_hash,commitment_hash:intent.commitment.commitment_hash,request_id:request.request_id,event_id:realityReceipt.event_id,event_hash:realityReceipt.event_hash,executor_attestation_hash:realityReceipt.executor_attestation_hash},guarantees,claim_boundary:'This proves the tested GitHub Actions Executor is admitted by GitHub OIDC identity claims and that the external reality receipt binds to that attestation. Other infrastructures need an equivalent independently verifiable trust-root adapter.'};
+          const receipt={schema:'RNCP-EXECUTION-RECEIPT-v1',rsta:'RSTA-032',execution:{provider:'github-actions',workflow:process.env.GITHUB_WORKFLOW,run_id:Number(process.env.GITHUB_RUN_ID),job:'executor',head_commit:process.env.GITHUB_SHA,event:process.env.GITHUB_EVENT_NAME,ref:process.env.GITHUB_REF,generated_at:new Date().toISOString()},assertions:guarantees,trust_root:verdict.trust_root,executor_identity:identity,attestation,external_action,chain:verdict.chain,verdict:'PASS'}; receipt.content_address=sha256Hex(receipt);
+          fs.writeFileSync('rsta032-final-verdict.json',JSON.stringify(verdict,null,2)); fs.writeFileSync('rsta032-execution-receipt.json',JSON.stringify(receipt,null,2)); fs.writeFileSync('rsta032-external-receipt.json',JSON.stringify(realityReceipt,null,2)); console.log(JSON.stringify({status:'PASS',run_id:process.env.GITHUB_RUN_ID,repository:claims.repository,workflow_ref:claims.workflow_ref,issue_number:created.number,content_address:receipt.content_address,guarantees},null,2));
+          JS
+      - name: Recompute receipt content address
+        run: |
+          set -euo pipefail
+          node <<'JS'
+          import fs from 'node:fs'; import crypto from 'node:crypto';
+          const canonical=(v)=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'):JSON.stringify(v); const hash=v=>crypto.createHash('sha256').update(canonical(v)).digest('hex'); const r=JSON.parse(fs.readFileSync('rsta032-execution-receipt.json','utf8')); const stored=r.content_address; const c=structuredClone(r); delete c.content_address; if(hash(c)!==stored) throw new Error('content address mismatch'); for(const [k,v] of Object.entries(r.assertions)) if(v!==true) throw new Error(`assertion failed: ${k}`); console.log(JSON.stringify({receipt_verified:true,content_address:stored},null,2));
+          JS
+      - name: Persist RSTA-032 evidence with rebase retry
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rsta032-final-verdict.json rsta032-execution-receipt.json rsta032-external-receipt.json
+          git commit -m 'rsta: persist RSTA-032 executor identity receipt [skip ci]'
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git rebase origin/main && git push origin HEAD:main && exit 0 || { git rebase --abort || true; sleep 1; }
+          done
+          exit 1
