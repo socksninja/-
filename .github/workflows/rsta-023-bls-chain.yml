@@ -56,9 +56,14 @@ jobs:
             let last;for(const u of urls){try{return {...await getJson(u),_url:u};}catch(e){last=e;}}throw last;
           }
           function verifyRandomness(b){return Buffer.from(b.randomness,'hex').equals(Buffer.from(h(hexBytes(b.signature))));}
+
+          // pedersen-bls-chained has G1 public keys + G2 signatures. Noble v2's
+          // longSignatures verifier takes the hash-to-G2 point, so hash the drand
+          // chained message once more using the library's exact BLS suite.
           function verifyBlsChained(b){
-            const message=h(Buffer.concat([Buffer.from(hexBytes(b.previous_signature)),Buffer.from(be64(b.round))]));
-            return bls.longSignatures.verify(hexBytes(b.signature),message,hexBytes(PINNED_PUBKEY));
+            const chainedMessage=h(Buffer.concat([Buffer.from(hexBytes(b.previous_signature)),Buffer.from(be64(b.round))]));
+            const messagePoint=bls.longSignatures.hash(chainedMessage);
+            return bls.longSignatures.verify(hexBytes(b.signature),messagePoint,hexBytes(PINNED_PUBKEY));
           }
 
           const samples=await Promise.all(RELAYS.map(async relay=>({relay,latest:await getBeacon(relay)})));
