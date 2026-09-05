@@ -47,7 +47,7 @@ jobs:
           const response=await fetch(process.env.VERCEL_EXECUTOR_URL,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(c)});
           const text=await response.text();
           console.log(text);
-          if(!response.ok) process.exit(1);
+          if(!response.ok) { console.error(`vercel_status=${response.status}`); process.exit(1); }
           JS
           node -e "const r=require('./vercel-executor.json'); if(r.decision!=='ACCEPT'||r.capability!=='EXECUTED') process.exit(1)"
           cat vercel-executor.json
@@ -62,19 +62,20 @@ jobs:
           const gh=JSON.parse(fs.readFileSync('github-action.json','utf8'));
           const v=JSON.parse(fs.readFileSync('vercel-executor.json','utf8'));
           const commitment_hash=sha256({protocol_version:c.protocol_version,commitment_id:c.commitment_id,action:c.action,payload:c.payload});
-          const ghCore={protocol_version:c.protocol_version,commitment_id:c.commitment_id,commitment_hash,execution_id:`github-actions:${c.commitment_id}`,executor_id:'github-actions',executor_revision:process.env.GITHUB_SHA,observed:{status:'EXECUTED',action:c.action,payload:c.payload,external_issue:{number:gh.number,url:gh.html_url}} ,policy:{action:c.action,external_endpoint:'https://api.github.com/repos/socksninja/-/issues',external_method:'POST'}};
+          const ghCore={protocol_version:c.protocol_version,commitment_id:c.commitment_id,commitment_hash,execution_id:`github-actions:${c.commitment_id}`,executor_id:'github-actions',executor_revision:process.env.GITHUB_SHA,observed:{status:'EXECUTED',action:c.action,payload:c.payload,external_issue:{number:gh.number,url:gh.html_url}},policy:{action:c.action,external_endpoint:'https://api.github.com/repos/socksninja/-/issues',external_method:'POST'}};
           const ghReceipt={...ghCore,receipt_hash:sha256(ghCore)};
           const vr=v.reality_receipt;
           const vercelCheck=verifyPortableReceipt(vr);
           const locator=vr.observed.external_fact.locator;
           const externalResponse=await fetch(locator,{cache:'no-store'});
-          const externalText=await externalResponse.text();
-          const expectedFact=JSON.stringify({rncp_protocol:'RNCP-PORTABLE-1',action:c.action,commitment_id:c.commitment_id,commitment_hash:vr.commitment_hash,payload:c.payload,executor_id:vr.executor_id,executor_revision:vr.executor_revision});
-          const independentExternalFact=externalResponse.ok && externalText.includes(expectedFact);
+          const externalBody=externalResponse.ok ? await externalResponse.text() : '';
+          let observedFact=null;
+          try { observedFact=JSON.parse(externalBody); } catch {}
+          const independentExternalFact=externalResponse.ok && JSON.stringify(observedFact)===JSON.stringify({rncp_protocol:'RNCP-PORTABLE-1',action:c.action,commitment_id:c.commitment_id,commitment_hash:vr.commitment_hash,payload:c.payload,executor_id:vr.executor_id,executor_revision:vr.executor_revision});
           const tampered={...vr,receipt_hash:'00'.repeat(32)};
-          const checks={github_real_side_effect:Number.isInteger(gh.number)&&typeof gh.html_url==='string',vercel_receipt_accepted:vercelCheck.decision==='ACCEPT',vercel_external_fact_persisted:independentExternalFact,external_fact_independently_read:true,same_commitment_hash:ghReceipt.commitment_hash===vr.commitment_hash,provider_identities_distinct:ghReceipt.executor_id!==vr.executor_id,tampered_receipt_rejected:verifyPortableReceipt(tampered).decision==='REJECT',replay_rejected:assertNoReplay([vr,vr])===false};
+          const checks={github_real_side_effect:Number.isInteger(gh.number)&&typeof gh.html_url==='string',vercel_receipt_accepted:vercelCheck.decision==='ACCEPT',vercel_external_fact_persisted:independentExternalFact,external_fact_independently_read:externalResponse.ok,same_commitment_hash:ghReceipt.commitment_hash===vr.commitment_hash,provider_identities_distinct:ghReceipt.executor_id!==vr.executor_id,tampered_receipt_rejected:verifyPortableReceipt(tampered).decision==='REJECT',replay_rejected:assertNoReplay([vr,vr])===false};
           const verdict=Object.values(checks).every(Boolean)?'PASS':'FAIL';
-          const receipt={schema:'RNCP-EXECUTION-RECEIPT-v1',rsta:'RSTA-038',protocol:'RNCP-CROSS-PROVIDER-REAL-SIDE-EFFECT-v1',commitment:c,providers:{github:ghReceipt,vercel:vr},independent_fact:{url:locator,http_status:externalResponse.status,response_sha256:sha256(externalText),verified:independentExternalFact},checks,verdict};
+          const receipt={schema:'RNCP-EXECUTION-RECEIPT-v1',rsta:'RSTA-038',protocol:'RNCP-CROSS-PROVIDER-REAL-SIDE-EFFECT-v1',commitment:c,providers:{github:ghReceipt,vercel:vr},independent_fact:{url:locator,http_status:externalResponse.status,response_sha256:sha256(externalBody),verified:independentExternalFact},checks,verdict};
           receipt.content_address=sha256(Object.fromEntries(Object.entries(receipt).filter(([k])=>k!=='content_address')));
           fs.writeFileSync('rsta038-execution-receipt.json',JSON.stringify(receipt,null,2)+'\n');
           fs.writeFileSync('rsta038-final-verdict.json',JSON.stringify({rsta:'RSTA-038',run_id:Number(process.env.GITHUB_RUN_ID),verdict,content_address:receipt.content_address,checks},null,2)+'\n');
