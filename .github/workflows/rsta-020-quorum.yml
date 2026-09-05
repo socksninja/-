@@ -1,0 +1,129 @@
+name: RSTA-020 Quorum
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rsta-020-quorum.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  executor-a:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute A ACCEPT
+        run: |
+          mkdir -p out
+          python3 - <<'PY'
+          import hashlib,json
+          commitment={'protocol_version':'RNCP-PORTABLE-1','commitment_id':'RSTA-020-QUORUM-001','action':'POSTMAN_ECHO','payload':{'message':'RSTA-020 quorum'}}
+          observed={'status':'EXECUTED','action':commitment['action'],'payload':commitment['payload']}
+          def canonical(v):
+              if not isinstance(v,(dict,list)): return json.dumps(v,separators=(',',':'),ensure_ascii=False)
+              if isinstance(v,list): return '['+','.join(canonical(x) for x in v)+']'
+              return '{'+','.join(json.dumps(k,ensure_ascii=False,separators=(',',':'))+':'+canonical(v[k]) for k in sorted(v))+'}'
+          def sha(v): return hashlib.sha256(canonical(v).encode()).hexdigest()
+          core={'protocol_version':commitment['protocol_version'],'commitment_id':commitment['commitment_id'],'commitment_hash':sha(commitment),'execution_id':'rsta020-executor-a:RSTA-020-QUORUM-001','executor_id':'rsta020-executor-a','implementation':'standalone-python','transport':'GITHUB_ACTIONS','observed':observed}
+          receipt={**core,'decision':'ACCEPT','capability':'EXECUTED','receipt_hash':sha(core)}
+          json.dump({'executor':'A','commitment':commitment,'receipt':receipt},open('out/receipt-a.json','w'),indent=2)
+          print(json.dumps(receipt,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: rsta020-a, path: out/receipt-a.json}
+
+  executor-b:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute B ACCEPT
+        run: |
+          mkdir -p out
+          node <<'JS'
+          const fs=require('fs'),crypto=require('crypto');
+          const commitment={protocol_version:'RNCP-PORTABLE-1',commitment_id:'RSTA-020-QUORUM-001',action:'POSTMAN_ECHO',payload:{message:'RSTA-020 quorum'}};
+          const observed={status:'EXECUTED',action:commitment.action,payload:commitment.payload};
+          const canonical=v=>Array.isArray(v)?'['+v.map(canonical).join(',')+']':(v&&typeof v==='object')?'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}':JSON.stringify(v);
+          const sha=v=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
+          const core={protocol_version:commitment.protocol_version,commitment_id:commitment.commitment_id,commitment_hash:sha(commitment),execution_id:'rsta020-executor-b:RSTA-020-QUORUM-001',executor_id:'rsta020-executor-b',implementation:'standalone-node','transport':'GITHUB_ACTIONS',observed};
+          const receipt={...core,decision:'ACCEPT',capability:'EXECUTED',receipt_hash:sha(core)};
+          fs.writeFileSync('out/receipt-b.json',JSON.stringify({executor:'B',commitment,receipt},null,2));
+          console.log(JSON.stringify(receipt,null,2));
+          JS
+      - uses: actions/upload-artifact@v4
+        with: {name: rsta020-b, path: out/receipt-b.json}
+
+  executor-c:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute C CONFLICT
+        run: |
+          mkdir -p out
+          python3 - <<'PY'
+          import hashlib,json
+          commitment={'protocol_version':'RNCP-PORTABLE-1','commitment_id':'RSTA-020-QUORUM-001','action':'POSTMAN_ECHO','payload':{'message':'RSTA-020 quorum'}}
+          observed={'status':'EXECUTED','action':commitment['action'],'payload':{'message':'CONFLICT-RSTA-020'}}
+          def canonical(v):
+              if not isinstance(v,(dict,list)): return json.dumps(v,separators=(',',':'),ensure_ascii=False)
+              if isinstance(v,list): return '['+','.join(canonical(x) for x in v)+']'
+              return '{'+','.join(json.dumps(k,ensure_ascii=False,separators=(',',':'))+':'+canonical(v[k]) for k in sorted(v))+'}'
+          def sha(v): return hashlib.sha256(canonical(v).encode()).hexdigest()
+          core={'protocol_version':commitment['protocol_version'],'commitment_id':commitment['commitment_id'],'commitment_hash':sha(commitment),'execution_id':'rsta020-executor-c:RSTA-020-QUORUM-001','executor_id':'rsta020-executor-c','implementation':'standalone-python-conflict','transport':'GITHUB_ACTIONS','observed':observed}
+          receipt={**core,'decision':'CONFLICT','capability':'NONE','receipt_hash':sha(core)}
+          json.dump({'executor':'C','commitment':commitment,'receipt':receipt},open('out/receipt-c.json','w'),indent=2)
+          print(json.dumps(receipt,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: rsta020-c, path: out/receipt-c.json}
+
+  quorum-verifier:
+    needs: [executor-a,executor-b,executor-c]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {pattern: rsta020-*,path: evidence,merge-multiple: true}
+      - name: Verify quorum matrix, tamper and replay
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,copy
+          from pathlib import Path
+          files=[Path('evidence/receipt-a.json'),Path('evidence/receipt-b.json'),Path('evidence/receipt-c.json')]
+          docs=[json.loads(p.read_text())['receipt'] for p in files]
+          def canonical(v):
+              if not isinstance(v,(dict,list)): return json.dumps(v,separators=(',',':'),ensure_ascii=False)
+              if isinstance(v,list): return '['+','.join(canonical(x) for x in v)+']'
+              return '{'+','.join(json.dumps(k,ensure_ascii=False,separators=(',',':'))+':'+canonical(v[k]) for k in sorted(v))+'}'
+          def sha(v): return hashlib.sha256(canonical(v).encode()).hexdigest()
+          expected={'protocol_version':'RNCP-PORTABLE-1','commitment_id':'RSTA-020-QUORUM-001','action':'POSTMAN_ECHO','payload':{'message':'RSTA-020 quorum'}}
+          expected_hash=sha(expected)
+          def integrity(r):
+              core={k:r[k] for k in ['protocol_version','commitment_id','commitment_hash','execution_id','executor_id','implementation','transport','observed']}
+              return sha(core)==r['receipt_hash'] and r['commitment_hash']==expected_hash
+          assert all(integrity(r) for r in docs), 'receipt integrity failure'
+          def vote(r):
+              return 1 if r['decision']=='ACCEPT' and r['capability']=='EXECUTED' and r['observed'].get('payload')==expected['payload'] else 0
+          def quorum(rs):
+              ids=[r['execution_id'] for r in rs]
+              if len(ids)!=len(set(ids)): return ('REJECT','REPLAY_DETECTED')
+              if any(not integrity(r) for r in rs): return ('REJECT','TAMPER_DETECTED')
+              positives=sum(vote(r) for r in rs)
+              if len(rs)!=3: return ('REJECT','INVALID_QUORUM_SIZE')
+              return ('ACCEPT','QUORUM_2_OF_3') if positives>=2 else ('REJECT','NO_QUORUM')
+          one=[docs[0],docs[2],copy.deepcopy(docs[2])]
+          one[1]['execution_id']='rsta020-conflict-shadow:RSTA-020-QUORUM-001'
+          one[1]['receipt_hash']=sha({k:one[1][k] for k in ['protocol_version','commitment_id','commitment_hash','execution_id','executor_id','implementation','transport','observed']})
+          two=[docs[0],docs[1],docs[2]]
+          three=[docs[0],docs[1],copy.deepcopy(docs[0])]
+          three[2]['executor_id']='rsta020-executor-c3'; three[2]['execution_id']='rsta020-executor-c3:RSTA-020-QUORUM-001'; three[2]['implementation']='standalone-python'; three[2]['decision']='ACCEPT'; three[2]['capability']='EXECUTED'; three[2]['receipt_hash']=sha({k:three[2][k] for k in ['protocol_version','commitment_id','commitment_hash','execution_id','executor_id','implementation','transport','observed']})
+          assert quorum(one)==('REJECT','NO_QUORUM')
+          assert quorum(two)==('ACCEPT','QUORUM_2_OF_3')
+          assert quorum(three)==('ACCEPT','QUORUM_2_OF_3')
+          tamper=copy.deepcopy(two); tamper[0]['observed']['payload']['message']='TAMPERED'; assert quorum(tamper)==('REJECT','TAMPER_DETECTED')
+          replay=copy.deepcopy(two); replay[2]['execution_id']=replay[0]['execution_id']; assert quorum(replay)==('REJECT','REPLAY_DETECTED')
+          result={'rsta':'RSTA-020','matrix':{'1_of_3_positive':'REJECT','2_of_3_positive_1_conflict':'ACCEPT','3_of_3_positive':'ACCEPT'},'tamper':'REJECT','replay':'REJECT','policy':'2/3 deterministic quorum; fail-closed on integrity/replay failure','receipt_hashes':[r['receipt_hash'] for r in docs]}
+          Path('evidence/rsta020-verdict.json').write_text(json.dumps(result,indent=2))
+          print(json.dumps(result,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: rsta020-verdict, path: evidence/rsta020-verdict.json}
