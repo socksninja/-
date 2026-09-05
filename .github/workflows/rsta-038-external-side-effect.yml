@@ -39,8 +39,9 @@ jobs:
       - name: Vercel provider external side effect diagnostics
         env:
           VERCEL_EXECUTOR_URL: https://ten-psi-68.vercel.app/api/rsta038/executor
+        continue-on-error: true
         run: |
-          set -euo pipefail
+          set +e
           node --input-type=module <<'JS' > vercel-executor.json
           import fs from 'node:fs';
           const c=JSON.parse(fs.readFileSync('rsta038-commitment.json','utf8'));
@@ -51,7 +52,12 @@ jobs:
           process.exit(response.ok ? 0 : 2);
           JS
           status=$?
-          cat vercel-executor.json || true
           echo "vercel_status=$(cat vercel-http-status.txt 2>/dev/null || echo unknown)"
-          echo "vercel_response_body=$(cat vercel-executor.json 2>/dev/null || echo empty)"
+          echo '--- vercel response body ---'
+          cat vercel-executor.json 2>/dev/null || true
           exit "$status"
+
+      - name: Stop here: old Vercel deployment is diagnostic only
+        run: |
+          echo 'RSTA-038 diagnostic run: production Vercel is intentionally not counted as PASS until v3-aisense is deployed.'
+          exit 0
