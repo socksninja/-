@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 33977607204,
+    "run_id": 33977669954,
     "job": "executor",
-    "head_commit": "575c26733d3d6063c23cc8f5da498b10d48f933e",
+    "head_commit": "de627035c8450d4c4bebf28ea6b4545faa0441e9",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-05T16:21:48.248Z"
+    "generated_at": "2026-09-05T16:22:56.053Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "a6b761ef6139a9f2b068f189f18b46cb1363950ef9e8105b98a05affc9c1eb88"
+    "body_hash": "ef7186b2c26f6bb01a6945fa05bcaa4e449b49dac13d1b693c10618d0557dc61"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 10,
-    "html_url": "https://github.com/socksninja/-/issues/10"
+    "issue_number": 15,
+    "html_url": "https://github.com/socksninja/-/issues/15"
   },
   "chain": {
     "prior_rsta030_content_address": "5b4e28c3412733db2d6da6cf8b121904782c0db92d9a68bcc98cb3ba9532f3ec",
-    "commitment_hash": "7a3705c67f4835dfb5e0bd84bacf3e067cb6780ab059e820dbf8db32e2ec2cde",
-    "request_id": "RSTA-031-REQ-33977607204",
-    "event_id": "RSTA-031-REQ-33977607204:REALITY",
-    "event_hash": "da21a57faff2d5ff0844c923fc486fffd4d763ea0e512981eaf0f189a1ed515b"
+    "commitment_hash": "82384732dcb2a0887576a1770b21aeafad556cc6be4a80ec23ef11a73fa21aae",
+    "request_id": "RSTA-031-REQ-33977669954",
+    "event_id": "RSTA-031-REQ-33977669954:REALITY",
+    "event_hash": "ac6ec81b21ca62ede20c7bd07f0eaf9dea7d1141f779a91a93a75cf80df0b139"
   },
   "verdict": "PASS",
-  "content_address": "12a27722536e636f81184d8d6b98d96bc5b8dd776865fe67c42490737e85ab27"
+  "content_address": "d1fa66f645cfb54ad63f4597fe8e70bcfb5449ae84128533601f322a1df13e72"
 }
