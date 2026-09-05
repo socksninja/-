@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   executor-a:
@@ -81,6 +81,10 @@ jobs:
     needs: [executor-a,executor-b,executor-c]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout verifier commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/download-artifact@v4
         with: {pattern: rsta020-*,path: evidence,merge-multiple: true}
       - name: Verify quorum matrix, tamper and replay
@@ -100,21 +104,19 @@ jobs:
           def integrity(r):
               core={k:r[k] for k in ['protocol_version','commitment_id','commitment_hash','execution_id','executor_id','implementation','transport','observed']}
               return sha(core)==r['receipt_hash'] and r['commitment_hash']==expected_hash
-          assert all(integrity(r) for r in docs), 'receipt integrity failure'
-          def vote(r):
-              return 1 if r['decision']=='ACCEPT' and r['capability']=='EXECUTED' and r['observed'].get('payload')==expected['payload'] else 0
+          def vote(r): return 1 if r['decision']=='ACCEPT' and r['capability']=='EXECUTED' and r['observed'].get('payload')==expected['payload'] else 0
           def quorum(rs):
               ids=[r['execution_id'] for r in rs]
               if len(ids)!=len(set(ids)): return ('REJECT','REPLAY_DETECTED')
               if any(not integrity(r) for r in rs): return ('REJECT','TAMPER_DETECTED')
-              positives=sum(vote(r) for r in rs)
               if len(rs)!=3: return ('REJECT','INVALID_QUORUM_SIZE')
+              positives=sum(vote(r) for r in rs)
               return ('ACCEPT','QUORUM_2_OF_3') if positives>=2 else ('REJECT','NO_QUORUM')
-          one=[docs[0],docs[2],copy.deepcopy(docs[2])]
-          one[1]['execution_id']='rsta020-conflict-shadow:RSTA-020-QUORUM-001'
-          one[1]['receipt_hash']=sha({k:one[1][k] for k in ['protocol_version','commitment_id','commitment_hash','execution_id','executor_id','implementation','transport','observed']})
-          two=[docs[0],docs[1],docs[2]]
-          three=[docs[0],docs[1],copy.deepcopy(docs[0])]
+          one=[copy.deepcopy(docs[0]),copy.deepcopy(docs[2]),copy.deepcopy(docs[2])]
+          one[2]['execution_id']='rsta020-conflict-shadow:RSTA-020-QUORUM-001'
+          one[2]['receipt_hash']=sha({k:one[2][k] for k in ['protocol_version','commitment_id','commitment_hash','execution_id','executor_id','implementation','transport','observed']})
+          two=[copy.deepcopy(docs[0]),copy.deepcopy(docs[1]),copy.deepcopy(docs[2])]
+          three=[copy.deepcopy(docs[0]),copy.deepcopy(docs[1]),copy.deepcopy(docs[0])]
           three[2]['executor_id']='rsta020-executor-c3'; three[2]['execution_id']='rsta020-executor-c3:RSTA-020-QUORUM-001'; three[2]['implementation']='standalone-python'; three[2]['decision']='ACCEPT'; three[2]['capability']='EXECUTED'; three[2]['receipt_hash']=sha({k:three[2][k] for k in ['protocol_version','commitment_id','commitment_hash','execution_id','executor_id','implementation','transport','observed']})
           assert quorum(one)==('REJECT','NO_QUORUM')
           assert quorum(two)==('ACCEPT','QUORUM_2_OF_3')
@@ -122,8 +124,13 @@ jobs:
           tamper=copy.deepcopy(two); tamper[0]['observed']['payload']['message']='TAMPERED'; assert quorum(tamper)==('REJECT','TAMPER_DETECTED')
           replay=copy.deepcopy(two); replay[2]['execution_id']=replay[0]['execution_id']; assert quorum(replay)==('REJECT','REPLAY_DETECTED')
           result={'rsta':'RSTA-020','matrix':{'1_of_3_positive':'REJECT','2_of_3_positive_1_conflict':'ACCEPT','3_of_3_positive':'ACCEPT'},'tamper':'REJECT','replay':'REJECT','policy':'2/3 deterministic quorum; fail-closed on integrity/replay failure','receipt_hashes':[r['receipt_hash'] for r in docs]}
-          Path('evidence/rsta020-verdict.json').write_text(json.dumps(result,indent=2))
+          Path('rsta/rsta020-verdict.json').write_text(json.dumps(result,indent=2))
           print(json.dumps(result,indent=2))
           PY
-      - uses: actions/upload-artifact@v4
-        with: {name: rsta020-verdict, path: evidence/rsta020-verdict.json}
+      - name: Persist RSTA-020 verdict
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rsta/rsta020-verdict.json
+          git commit -m 'rsta: persist RSTA-020 quorum verdict [skip ci]'
+          git push origin HEAD:main
