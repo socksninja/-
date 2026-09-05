@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 33980780866,
+    "run_id": 33980831551,
     "job": "executor",
-    "head_commit": "e5659a53c5151eaccfd892e8db4672c81452f85f",
+    "head_commit": "7fb7ab4dc8d263a652cde59184844d44c10be737",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-05T17:23:06.644Z"
+    "generated_at": "2026-09-05T17:24:41.431Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "078dca8bac3c568c881c44eeec5bd867eba843b387663938a2ffdf7c9de9004c"
+    "body_hash": "5022e2ee70c0d87de81f11025f8b4d1753dc7e818ce494e3f02dbd4167915f1d"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 222,
-    "html_url": "https://github.com/socksninja/-/issues/222"
+    "issue_number": 232,
+    "html_url": "https://github.com/socksninja/-/issues/232"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "52b8c5c64a3498426e68fa052a2089c38ea9e09e10270dca2ad393475a4afeb4",
-    "request_id": "RSTA-031-REQ-33980780866",
-    "event_id": "RSTA-031-REQ-33980780866:REALITY",
-    "event_hash": "8d4507546dd218368459c4e6c50bf1a85fa37672a5581e646e5e1c473a0600df"
+    "commitment_hash": "269d1c4ad15d2a88fc509ccd64770437805d6b7ab74aa92934ace30a76fd4b6c",
+    "request_id": "RSTA-031-REQ-33980831551",
+    "event_id": "RSTA-031-REQ-33980831551:REALITY",
+    "event_hash": "01a71a4e5e1779ae3742da8e0f6183beb16fb8f5beb1f9a518e227426377e9ac"
   },
   "verdict": "PASS",
-  "content_address": "ca027e0251e8fb5af8dc3bb239139c297f1230ab4ab81d4998b32c38d54b24d5"
+  "content_address": "8d57a49016a85fb0b472bf7992d01fd71762f67a4c96fa19776827b0e3b08094"
 }
