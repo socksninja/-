@@ -1,0 +1,71 @@
+{
+  "rsta": "RSTA-025",
+  "status": "PASS",
+  "primitive": "rsta/capability-gate.mjs",
+  "policy_version": "RNCP-CAPABILITY-GATE-v1",
+  "state_model": [
+    "PENDING",
+    "ANCHOR_VERIFIED",
+    "CAPABILITY_UNLOCKED",
+    "EXECUTING",
+    "EXECUTED",
+    "REALITY_RECEIPT"
+  ],
+  "baseline": {
+    "issued": true,
+    "state": "CAPABILITY_UNLOCKED",
+    "verified": true,
+    "execution": "EXECUTED"
+  },
+  "offline_verifier": {
+    "decision": "ACCEPT",
+    "signature_valid": true,
+    "binding_valid": true,
+    "token_id_valid": true
+  },
+  "negative_controls": {
+    "forged_unlock_object": {
+      "valid": false,
+      "code": "TOKEN_SIGNATURE_INVALID"
+    },
+    "copied_token_payload_change": {
+      "valid": false,
+      "code": "ACTION_MISMATCH"
+    },
+    "wrong_commitment": {
+      "valid": false,
+      "code": "COMMITMENT_MISMATCH"
+    },
+    "wrong_action": {
+      "valid": false,
+      "code": "ACTION_MISMATCH"
+    },
+    "tampered_token_signature": {
+      "valid": false,
+      "code": "TOKEN_SIGNATURE_INVALID"
+    },
+    "tampered_anchor_binding": {
+      "valid": false,
+      "code": "TOKEN_SIGNATURE_INVALID"
+    },
+    "invalid_state": {
+      "valid": false,
+      "code": "STATE_INVALID"
+    },
+    "replay": {
+      "valid": false,
+      "code": "TOKEN_REPLAY"
+    }
+  },
+  "invariants": {
+    "capability_unlocked_requires_verified_anchor": true,
+    "signed_capability_required_for_execution": true,
+    "commitment_and_action_bound": true,
+    "direct_unlock_object_rejected": true,
+    "replay_rejected": true,
+    "offline_signature_verification_passed": true,
+    "all_negative_controls_rejected": true,
+    "direct_execution_bypass_rejected": true
+  },
+  "evidence_hash": "843ee7ada2ad91e887479c4895763b98b3d2d6594cb7224f4553ba691524de18"
+}
