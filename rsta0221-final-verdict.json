@@ -1,0 +1,28 @@
+{
+  "rsta": "RSTA-022.1",
+  "status": "PASS",
+  "baseline_quorum": {
+    "decision": "ACCEPT",
+    "reason": "QUORUM_2_OF_3"
+  },
+  "provider_failure": {
+    "decision": "ACCEPT",
+    "reason": "SURVIVES_C_LOSS",
+    "simulation": "C removed; A+B independently verified"
+  },
+  "collusion_simulation": {
+    "quorum": "ACCEPT",
+    "anchor_gate": "REJECT",
+    "final": "REJECT"
+  },
+  "tamper": "REJECT",
+  "replay": "REJECT",
+  "final_capability_gate": {
+    "honest": "ACCEPT",
+    "colluding_majority": "REJECT"
+  },
+  "anchor_source": "https://httpbin.org/post",
+  "anchor_transport": "HTTPS_EXTERNAL",
+  "anchor_hash": "5757cc126f802ad44287dfd6e9013b8853dc1b313f90d330cd8aaa0fdeef87ff",
+  "claim_boundary": "HTTP echo proves external transport/observation only; it is not a strong independent world-truth oracle."
+}
