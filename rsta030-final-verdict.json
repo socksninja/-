@@ -13,15 +13,15 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 41,
-    "html_url": "https://github.com/socksninja/-/issues/41"
+    "issue_number": 70,
+    "html_url": "https://github.com/socksninja/-/issues/70"
   },
   "chain": {
     "prior_rsta29_content_address": "ccb5af0ba8d456e0bad6239bd3e4de279379b64bfe08e5ad6e0000482c4393f4",
-    "commitment_hash": "7e925f67f810a2f27dfea164a4210413ddb9976ccd08b738807ec7e7c797d92a",
-    "request_id": "RSTA-030-HARD-REQ-33978059904",
-    "event_id": "RSTA-030-HARD-REQ-33978059904:REALITY",
-    "event_hash": "4dc407ad2d79e5b69b232123e28c2bd18e3680e09d17b286bc7908c4e2c358d1"
+    "commitment_hash": "17b3fa0b797fddfcc3959bb574f688e3a09ce964f16b5757e445c4210b94c3b6",
+    "request_id": "RSTA-030-HARD-REQ-33978587289",
+    "event_id": "RSTA-030-HARD-REQ-33978587289:REALITY",
+    "event_hash": "886e2c8dc92bce3027ed59a6060210c251717595ab731241dfa8b264299081f8"
   },
   "guarantees": {
     "commitment_verified": true,
