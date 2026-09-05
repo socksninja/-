@@ -1,0 +1,16 @@
+{
+  "schema": "RNCP-CAPABILITY-LEDGER-v1",
+  "consumed": [
+    {
+      "token_id": "9a34a8f5c4f487a3934534dd345992bdae83323395bab8205b4b35c1519d9ccd",
+      "token_fingerprint": "ed26177d7d09f63e413d84808ec28a715023e566e6a75006a2654901e0c2e65c",
+      "commitment_id": "RSTA-028-CAPABILITY-LEDGER-001",
+      "action": "MINT_AND_EXECUTE_GATED_ACTION",
+      "anchor_evidence_hash": "284689cd3d92956bf7593b2f85b5c7bce21d5be395c5ccff5e87f104d2ebf122",
+      "anchor_round": 6439692,
+      "consumed_at": "2026-09-05T15:33:28.670Z",
+      "provider": "github-actions"
+    }
+  ],
+  "updated_at": "2026-09-05T15:33:28.736Z"
+}

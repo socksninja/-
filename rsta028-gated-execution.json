@@ -1,0 +1,9 @@
+{
+  "schema": "RNCP-GATED-EXECUTION-v1",
+  "commitment_id": "RSTA-028-CAPABILITY-LEDGER-001",
+  "action": "MINT_AND_EXECUTE_GATED_ACTION",
+  "token_id": "9a34a8f5c4f487a3934534dd345992bdae83323395bab8205b4b35c1519d9ccd",
+  "anchor_evidence_hash": "284689cd3d92956bf7593b2f85b5c7bce21d5be395c5ccff5e87f104d2ebf122",
+  "execution_state": "EXECUTED",
+  "executed_at": "2026-09-05T15:33:28.737Z"
+}

@@ -1,0 +1,38 @@
+{
+  "schema": "RNCP-EXECUTION-RECEIPT-v1",
+  "rsta": "RSTA-028",
+  "execution": {
+    "provider": "github-actions",
+    "workflow": "RSTA-028 Capability Token + Persistent Replay Ledger",
+    "run_id": 33975160522,
+    "run_attempt": 1,
+    "job": "verify",
+    "head_commit": "50044f8e2ea8d10b4ee21d52782d4235de10d4f4",
+    "event": "push",
+    "ref": "refs/heads/main",
+    "generated_at": "2026-09-05T15:33:28.737Z"
+  },
+  "assertions": {
+    "prior_receipt_verified": true,
+    "capability_signature_valid": true,
+    "capability_binding_valid": true,
+    "fresh_token_consumed": true,
+    "gated_artifact_created": true,
+    "forged_action_rejected": true,
+    "persistent_replay_rejected": true
+  },
+  "capability": {
+    "token_id": "9a34a8f5c4f487a3934534dd345992bdae83323395bab8205b4b35c1519d9ccd",
+    "token_fingerprint": "ed26177d7d09f63e413d84808ec28a715023e566e6a75006a2654901e0c2e65c",
+    "commitment_id": "RSTA-028-CAPABILITY-LEDGER-001",
+    "action": "MINT_AND_EXECUTE_GATED_ACTION",
+    "anchor_evidence_hash": "284689cd3d92956bf7593b2f85b5c7bce21d5be395c5ccff5e87f104d2ebf122",
+    "anchor_round": 6439692
+  },
+  "ledger": {
+    "schema": "RNCP-CAPABILITY-LEDGER-v1",
+    "consumed_token_count": 1
+  },
+  "verdict": "PASS",
+  "content_address": "c4bc82f4cc76d05fa98c47e3a60721ce56b863c99f1b410eec9cc45b70e74e8f"
+}

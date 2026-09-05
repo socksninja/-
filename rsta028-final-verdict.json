@@ -1,0 +1,34 @@
+{
+  "rsta": "RSTA-028",
+  "status": "PASS",
+  "prerequisite": {
+    "rsta": "RSTA-027",
+    "receipt_content_address": "18f9b8af42e914ff8c067d6b64cf3c9333d3c2f83b51c5887cfdd8f59301c8b9",
+    "receipt_verified": true,
+    "external_fact_round": 6439692,
+    "anchor_evidence_hash": "284689cd3d92956bf7593b2f85b5c7bce21d5be395c5ccff5e87f104d2ebf122"
+  },
+  "capability": {
+    "schema": "RNCP-CAPABILITY-v1",
+    "policy_version": "RNCP-CAPABILITY-GATE-v2",
+    "token_id": "9a34a8f5c4f487a3934534dd345992bdae83323395bab8205b4b35c1519d9ccd",
+    "signature_valid": true,
+    "binding_valid": true
+  },
+  "execution": {
+    "gate_accepts_fresh_token": true,
+    "gated_artifact_created": true,
+    "state": "EXECUTED"
+  },
+  "adversarial_controls": {
+    "forged_action_rejected": true,
+    "persistent_replay_rejected": true,
+    "capability_required_before_execution": true
+  },
+  "persistence": {
+    "ledger_file": "rsta028-capability-ledger.json",
+    "committed_token_count_after_run": 1,
+    "reload_verified": true
+  },
+  "claim_boundary": "This proves signed capability binding and persistent replay rejection under the tested Git/GitHub Actions ledger. It does not by itself provide Byzantine consensus, independent key custody, or immutable storage against repository history rewrite."
+}
