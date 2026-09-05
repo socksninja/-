@@ -1,0 +1,51 @@
+{
+  "rsta": "RSTA-016",
+  "external_repository": "socksninja/-",
+  "external_commit": "d303c3f20f4af23a4823c8b58922a9f9f6443003",
+  "vercel_deployment": "dpl_zzjxmKYP5DwMJ1yW6H6SXZQk2feN",
+  "vercel_state": "READY",
+  "transport": "GET_QUERY",
+  "commitment": {
+    "commitment_id": "RSTA-016-PORTABLE-001",
+    "action": "POSTMAN_ECHO",
+    "payload": {
+      "message": "RSTA-016 external execution"
+    }
+  },
+  "remote_receipt": {
+    "decision": "ACCEPT",
+    "capability": "EXECUTED",
+    "commitment_hash": "5eecca09351dd256a0f18680f30ebb41327db19ecfcf0fbd4398abcdbca529dd",
+    "execution_id": "external-executor-vercel-rsta016:RSTA-016-PORTABLE-001",
+    "executor_id": "external-executor-vercel-rsta016",
+    "implementation": "standalone-node-next-route",
+    "executor_repository": "socksninja/-",
+    "executor_revision": "bc3b8288b9ff5638a17da537b91078701352faa1",
+    "transport": "GET_QUERY",
+    "observed": {
+      "status": "EXECUTED",
+      "action": "POSTMAN_ECHO",
+      "payload": {
+        "message": "RSTA-016 external execution"
+      }
+    },
+    "receipt_hash": "9140584473ad40e184f68ee93d20081b3eb6d149ac72efddd550c2ede03e5f27"
+  },
+  "independent_verification": {
+    "commitment_hash_recomputed": "5eecca09351dd256a0f18680f30ebb41327db19ecfcf0fbd4398abcdbca529dd",
+    "receipt_hash_recomputed": "9140584473ad40e184f68ee93d20081b3eb6d149ac72efddd550c2ede03e5f27",
+    "commitment_hash_match": true,
+    "receipt_hash_match": true
+  },
+  "tamper_test": {
+    "field": "observed.payload.message",
+    "replacement": "TAMPERED",
+    "tampered_hash": "6229ef45fa21f2d49a44c111d6825a31966a2200496ec3489abfd8de3b7ef2ff",
+    "matches_original_receipt_hash": false,
+    "result": "REJECT"
+  },
+  "runtime_log_query": {
+    "query": "RSTA016_EXTERNAL_EXECUTOR",
+    "result": "NO_LOGS_RETURNED_BY_VERCEL_OBSERVABILITY"
+  }
+}
