@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 33980245514,
+    "run_id": 33980292911,
     "job": "executor",
-    "head_commit": "338f130402983da8625f52087343ae0f00673d66",
+    "head_commit": "84f30594ce2b93e737620d20bb74eb349b6029df",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-05T17:13:17.726Z"
+    "generated_at": "2026-09-05T17:13:55.001Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "9f58f55a22772098cbeda1d3b6477df7b27aac88f2438a41998376bbe380b61b"
+    "body_hash": "e865c98684d78c3ad1f08af28fc3ddf82def725c84b8841e6937e216769c6ce4"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 177,
-    "html_url": "https://github.com/socksninja/-/issues/177"
+    "issue_number": 188,
+    "html_url": "https://github.com/socksninja/-/issues/188"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "d010946215ff09e0ebc956c966e841047255daf0ee8a8608a9652d9739c58bea",
-    "request_id": "RSTA-031-REQ-33980245514",
-    "event_id": "RSTA-031-REQ-33980245514:REALITY",
-    "event_hash": "06226537f5958f7d0887691c1b0fa4caf9d341d443404eed9e0112e105b09e4a"
+    "commitment_hash": "4fbce2ed231099177e062bd2a4690f549347d761b9bc3a0d408c68ed24090b85",
+    "request_id": "RSTA-031-REQ-33980292911",
+    "event_id": "RSTA-031-REQ-33980292911:REALITY",
+    "event_hash": "f8e238f3a78507526323f03510c66ca4666ce9f84c603fd1ab0acad87d921569"
   },
   "verdict": "PASS",
-  "content_address": "08cc05b082cd7b51d7990da98f71739a43657697c96a085cf0ef32f1eb160296"
+  "content_address": "75f6bb1e0607b40c83e098cb3bced9d1fd8c66ec65fdb042698d289afe6c949c"
 }
