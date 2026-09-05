@@ -3,9 +3,13 @@ import { createHash } from "node:crypto";
 const PROTOCOL_VERSION = "RNCP-PORTABLE-1";
 const EXECUTOR_ID = "external-executor-vercel-rsta016";
 const IMPLEMENTATION = "standalone-node-next-route";
+const EXECUTOR_REPOSITORY = "socksninja/-";
+const EXECUTOR_REVISION = "5dc8e797f56822014f6e13dc62d27d2f085043fd";
 
 function canonical(value) {
-  return JSON.stringify(value, Object.keys(value).sort());
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`).join(",`)}}`;
 }
 
 function sha256(value) {
@@ -21,6 +25,8 @@ export async function GET() {
     protocol_version: PROTOCOL_VERSION,
     executor_id: EXECUTOR_ID,
     implementation: IMPLEMENTATION,
+    executor_repository: EXECUTOR_REPOSITORY,
+    executor_revision: EXECUTOR_REVISION,
     isolation: {
       rncp_imports: false,
       conformance_imports: false,
@@ -71,6 +77,8 @@ export async function POST(request) {
     execution_id,
     executor_id: EXECUTOR_ID,
     implementation: IMPLEMENTATION,
+    executor_repository: EXECUTOR_REPOSITORY,
+    executor_revision: EXECUTOR_REVISION,
     observed,
   };
 
