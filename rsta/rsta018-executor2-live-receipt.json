@@ -2,37 +2,37 @@
   "rsta": "RSTA-018",
   "commitment": {
     "protocol_version": "RNCP-PORTABLE-1",
-    "commitment_id": "RSTA-018-PORTABLE-001",
+    "commitment_id": "RSTA-016-PORTABLE-001",
     "action": "POSTMAN_ECHO",
     "payload": {
-      "message": "RSTA-018 dual external execution"
+      "message": "RSTA-016 external execution"
     }
   },
   "executor": "github-actions-executor2-rsta018",
   "receipt": {
     "protocol_version": "RNCP-PORTABLE-1",
-    "commitment_id": "RSTA-018-PORTABLE-001",
+    "commitment_id": "RSTA-016-PORTABLE-001",
     "action": "POSTMAN_ECHO",
     "payload": {
-      "message": "RSTA-018 dual external execution"
+      "message": "RSTA-016 external execution"
     },
-    "commitment_hash": "8dd1fa6c4ad9cfaf2cadb634bdc731ab1fb7b0f7bf83f07e2d27a8056a1a028a",
-    "execution_id": "github-actions-executor2:RSTA-018-PORTABLE-001",
+    "commitment_hash": "5eecca09351dd256a0f18680f30ebb41327db19ecfcf0fbd4398abcdbca529dd",
+    "execution_id": "github-actions-executor2:RSTA-016-PORTABLE-001",
     "executor_id": "github-actions-executor2-rsta018",
     "implementation": "standalone-python-github-actions",
     "executor_repository": "socksninja/-",
-    "executor_revision": "eb9aac85e88e94e7e213b81b70f79b15351f1f31",
+    "executor_revision": "1e7a9c0de111fd33ab2f423a64e42650330de254",
     "transport": "GITHUB_ACTIONS",
     "observed": {
       "status": "EXECUTED",
       "action": "POSTMAN_ECHO",
       "payload": {
-        "message": "RSTA-018 dual external execution"
+        "message": "RSTA-016 external execution"
       }
     },
     "decision": "ACCEPT",
     "capability": "EXECUTED",
-    "receipt_hash": "8fe12ccbe23f8a5f2be82b3228c3bf28ba1254486bed6f393cf636fe6da4e29b"
+    "receipt_hash": "a4918779e52cae4fb06bf18e049e2b83f17e2a4748d5806171ef018bb93fc19c"
   },
-  "execution_run_url": "https://github.com/socksninja/-/actions/runs/33967499790"
+  "execution_run_url": "https://github.com/socksninja/-/actions/runs/33967517344"
 }
