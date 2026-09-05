@@ -1,0 +1,195 @@
+name: RSTA-024 Capability Unlock Requires Cryptographic Reality Anchor
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rsta-024-capability-anchor-gate.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pinned commit
+        uses: actions/checkout@v4
+
+      - name: Install isolated verifier
+        run: |
+          set -euxo pipefail
+          rm -rf rsta024-work
+          mkdir rsta024-work
+          cd rsta024-work
+          npm init -y
+          npm config set registry https://registry.npmjs.org/
+          npm install --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeout=1000 --fetch-retry-maxtimeout=5000 @noble/curves@2.3.0 @noble/hashes@2.4.0
+
+      - name: Verify Reality Anchor and enforce capability gate
+        run: |
+          set -euo pipefail
+          cd rsta024-work
+          node > ../rsta024-final-verdict.json <<'JS'
+          import crypto from 'node:crypto';
+          import {bls12_381 as bls} from '@noble/curves/bls12-381.js';
+          import {sha256} from '@noble/hashes/sha2.js';
+
+          const CHAIN='8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce';
+          const PUBKEY='868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31';
+          const RELAYS=['https://api.drand.sh','https://api2.drand.sh','https://api3.drand.sh'];
+          const PERIOD=30;
+          const GENESIS=1595431050;
+          const SCHEME='pedersen-bls-chained';
+          const COMMITMENT='RSTA-024-CAPABILITY-ANCHOR-001';
+          const ACTION='RSTA024_EXTERNAL_CAPABILITY_EXECUTION';
+
+          const hexBytes=hx=>Uint8Array.from(Buffer.from(hx,'hex'));
+          const h=b=>new Uint8Array(sha256(b));
+          const be64=n=>{const b=new Uint8Array(8);new DataView(b.buffer).setBigUint64(0,BigInt(n));return b;};
+          const canonical=v=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'):JSON.stringify(v);
+          const shaHex=v=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
+
+          async function getJson(url){
+            const r=await fetch(url,{headers:{accept:'application/json'},cache:'no-store'});
+            if(!r.ok) throw new Error(`${url} HTTP ${r.status}`);
+            return await r.json();
+          }
+          async function getBeacon(relay,round){
+            const urls=[`${relay}/${CHAIN}/public/${round}`,`${relay}/public/${round}`];
+            let last;
+            for(const u of urls){try{return {...await getJson(u),_url:u};}catch(e){last=e;}}
+            throw last;
+          }
+          function currentRound(now=Math.floor(Date.now()/1000)){return Math.floor((now-GENESIS)/PERIOD)+1;}
+          function randomnessValid(b){return Buffer.from(b.randomness,'hex').equals(Buffer.from(h(hexBytes(b.signature))));}
+          function blsValid(b){
+            const chained=h(Buffer.concat([Buffer.from(hexBytes(b.previous_signature)),Buffer.from(be64(b.round))]));
+            const point=bls.longSignatures.hash(chained);
+            return bls.longSignatures.verify(hexBytes(b.signature),point,hexBytes(PUBKEY));
+          }
+
+          // Build a fresh cryptographically verified anchor from three independent drand relays.
+          const latest=await Promise.all(RELAYS.map(async relay=>({relay,beacon:await getJson(`${relay}/${CHAIN}/public/latest`)})));
+          const target=Math.min(...latest.map(x=>Number(x.beacon.round)));
+          const expectedRound=currentRound();
+          if(!(target===expectedRound||target===expectedRound-1)) throw new Error(`anchor round outside live window: target=${target} expected=${expectedRound}`);
+
+          const relaySnapshots=[];
+          for(const item of latest){
+            const info=await getJson(`${item.relay}/${CHAIN}/info`);
+            if(info.hash!==CHAIN||info.period!==PERIOD||info.genesis_time!==GENESIS||(info.schemeID&&info.schemeID!==SCHEME)) throw new Error(`relay chain metadata mismatch: ${item.relay}`);
+            if(info.public_key&&info.public_key.toLowerCase()!==PUBKEY) throw new Error(`relay public key mismatch: ${item.relay}`);
+            const window=await Promise.all([target-2,target-1,target].map(r=>getBeacon(item.relay,r)));
+            relaySnapshots.push({relay:item.relay,window});
+          }
+
+          const anchorChecks=[];
+          for(let i=0;i<3;i++){
+            const rows=relaySnapshots.map(x=>x.window[i]);
+            const rounds=rows.map(x=>Number(x.round));
+            const sigs=rows.map(x=>x.signature);
+            const prevs=rows.map(x=>x.previous_signature);
+            const check={round:target-2+i,rounds_equal:new Set(rounds).size===1&&rounds[0]===target-2+i,signatures_equal:new Set(sigs).size===1,previous_signatures_equal:new Set(prevs).size===1,bls:true,randomness:true};
+            const b=rows[0];
+            check.randomness=randomnessValid(b);
+            check.bls=blsValid(b);
+            anchorChecks.push(check);
+            if(!(check.rounds_equal&&check.signatures_equal&&check.previous_signatures_equal&&check.bls&&check.randomness)) throw new Error(`anchor verification failed at round ${check.round}`);
+          }
+
+          const chainLinks=[];
+          const own=relaySnapshots[0].window;
+          for(let i=1;i<3;i++){
+            const ok=Number(own[i].round)===Number(own[i-1].round)+1&&own[i].previous_signature===own[i-1].signature;
+            chainLinks.push({from:Number(own[i-1].round),to:Number(own[i].round),linked:ok});
+            if(!ok) throw new Error(`anchor continuity failed ${own[i-1].round}->${own[i].round}`);
+          }
+
+          const anchor={
+            chain:CHAIN,
+            round:target,
+            signature:own[2].signature,
+            previous_signature:own[2].previous_signature,
+            cryptographically_valid:true,
+            relay_count:RELAYS.length,
+            cross_relay_agreement:true,
+            continuity:true,
+            evidence_hash:shaHex({chain:CHAIN,round:target,signature:own[2].signature,previous_signature:own[2].previous_signature})
+          };
+
+          // Capability gate: the side-effecting executor is unreachable unless every anchor predicate is true.
+          function capabilityGate(a){
+            const valid=!!a && a.cryptographically_valid===true && a.cross_relay_agreement===true && a.continuity===true && a.chain===CHAIN && Number(a.round)===target && typeof a.signature==='string' && a.signature.length===192;
+            return valid ? {decision:'ACCEPT',capability:'CAPABILITY_UNLOCKED'} : {decision:'REJECT',capability:'CAPABILITY_LOCKED'};
+          }
+
+          let actionInvocations=0;
+          let externalStatus=null;
+          let externalResponseHash=null;
+          async function executeCapability(gate){
+            if(gate.decision!=='ACCEPT') throw new Error('executor reached without capability unlock');
+            actionInvocations++;
+            const body={commitment:COMMITMENT,action:ACTION,anchor_round:target,anchor_evidence_hash:anchor.evidence_hash};
+            const r=await fetch('https://httpbin.org/post',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),cache:'no-store'});
+            externalStatus=r.status;
+            if(!r.ok) throw new Error(`external action HTTP ${r.status}`);
+            const text=await r.text();
+            externalResponseHash=crypto.createHash('sha256').update(text).digest('hex');
+            return {execution:'EXECUTED',body};
+          }
+
+          const baselineGate=capabilityGate(anchor);
+          const baselineExecution=await executeCapability(baselineGate);
+
+          // Negative controls: the executor must not be reachable for any invalid anchor state.
+          const negatives={
+            no_anchor:{anchor:null},
+            tampered_signature:{anchor:{...anchor,signature:'00'.repeat(96)}},
+            wrong_round:{anchor:{...anchor,round:target+1}},
+            broken_chain:{anchor:{...anchor,continuity:false}},
+            non_cryptographic:{anchor:{...anchor,cryptographically_valid:false}},
+            relay_disagreement:{anchor:{...anchor,cross_relay_agreement:false}},
+            wrong_chain:{anchor:{...anchor,chain:'wrong-chain'}}
+          };
+          const negativeResults={};
+          for(const [name,c] of Object.entries(negatives)){
+            const before=actionInvocations;
+            const gate=capabilityGate(c.anchor);
+            let executionAttempted=false;
+            let blockedError=null;
+            if(gate.decision==='ACCEPT'){
+              executionAttempted=true;
+              await executeCapability(gate);
+            } else {
+              blockedError='CAPABILITY_LOCKED_BEFORE_EXECUTION';
+            }
+            negativeResults[name]={decision:gate.decision,capability:gate.capability,execution_attempted:executionAttempted,action_invocations_delta:actionInvocations-before,blocked_error:blockedError};
+            if(!(gate.decision==='REJECT'&&gate.capability==='CAPABILITY_LOCKED'&&!executionAttempted&&actionInvocations===before)) throw new Error(`negative gate failed: ${name}`);
+          }
+
+          // Additional structural invariant for this implementation: all 7 invalid anchor states produced zero side effects.
+          const allNegativesFailClosed=Object.values(negativeResults).every(x=>x.decision==='REJECT'&&x.capability==='CAPABILITY_LOCKED'&&x.execution_attempted===false&&x.action_invocations_delta===0);
+          if(!allNegativesFailClosed) throw new Error('fail-closed capability invariant violated');
+
+          const final={
+            rsta:'RSTA-024',status:'PASS',
+            invariant:'CAPABILITY_UNLOCKED/EXECUTED requires cryptographically_valid Reality Anchor',
+            baseline:{gate:baselineGate,execution:baselineExecution,external_http_status:externalStatus,external_response_sha256:externalResponseHash,action_invocations:actionInvocations},
+            anchor:{...anchor,checks:anchorChecks,chain_links:chainLinks},
+            negative_controls:negativeResults,
+            fail_closed:{all_invalid_cases_rejected:true,zero_negative_side_effects:true},
+            evidence_hash:shaHex({anchor,baselineGate,baselineExecution,negativeResults})
+          };
+          console.log(JSON.stringify(final,null,2));
+          JS
+
+      - name: Persist RSTA-024 verdict
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rsta024-final-verdict.json
+          git commit -m 'rsta: persist RSTA-024 capability anchor gate verdict [skip ci]'
+          git push origin HEAD:main
