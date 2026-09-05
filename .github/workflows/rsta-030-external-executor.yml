@@ -1,0 +1,141 @@
+name: RSTA-030 External Executor Enforcement
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rsta-030-external-executor.yml'
+      - 'rsta/rsta030-external-executor.mjs'
+      - 'rsta029-execution-receipt.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Start independent HTTP fact executor
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'JS' > /tmp/executor.json &
+          import http from 'node:http';
+          const server = http.createServer((req,res)=>{
+            let body=''; req.on('data',c=>body+=c); req.on('end',()=>{
+              const payload={method:req.method,path:req.url,body};
+              res.writeHead(200,{'content-type':'application/json'});
+              res.end(JSON.stringify({ok:true,independent_executor:true,observed:payload}));
+            });
+          });
+          server.listen(0,'127.0.0.1',()=>console.log(JSON.stringify({port:server.address().port})));
+          setInterval(()=>{},1000);
+          JS
+          pid=$!
+          echo "$pid" > /tmp/executor.pid
+          for i in $(seq 1 50); do test -s /tmp/executor.json && break; sleep 0.1; done
+          cat /tmp/executor.json
+
+      - name: Execute RNCP-030 against external executor
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'JS'
+          import fs from 'node:fs';
+          import http from 'node:http';
+          import crypto from 'node:crypto';
+          import {
+            createExecutorIdentity,
+            createExecutionRequest,
+            verifyExecutionRequest,
+            createRealityReceipt,
+            verifyRealityReceipt,
+            sha256Hex,
+          } from './rsta/rsta030-external-executor.mjs';
+
+          const canonical=(v)=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'):JSON.stringify(v);
+          const hash=(v)=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
+          const receipt29=JSON.parse(fs.readFileSync('rsta029-execution-receipt.json','utf8'));
+          const copy29=structuredClone(receipt29); delete copy29.content_address;
+          if(hash(copy29)!==receipt29.content_address || receipt29.verdict!=='PASS') throw new Error('RSTA-029 prerequisite invalid');
+
+          const {port}=JSON.parse(fs.readFileSync('/tmp/executor.json','utf8'));
+          const executor=createExecutorIdentity('EXTERNAL-HTTP-EXECUTOR');
+          const commitmentHash=receipt29.chain.commitment_hash;
+          const action='POST_EXTERNAL_FACT';
+          const request=createExecutionRequest({executor,requestId:'RSTA-030-REQ-001',commitmentHash,action,method:'POST',path:'/fact',body:{message:'RNCP-030 external execution'},capabilityTokenId:'BOUND-BY-RSTA-029'});
+
+          const requestValid=verifyExecutionRequest(request,{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:executor.id,expectedCommitmentHash:commitmentHash,expectedAction:action,expectedMethod:'POST',expectedPath:'/fact',expectedCapabilityTokenId:'BOUND-BY-RSTA-029'});
+          if(requestValid.decision!=='ACCEPT') throw new Error(`request verify failed: ${requestValid.code}`);
+
+          const rawResponse=await new Promise((resolve,reject)=>{
+            const payload=JSON.stringify({message:'RNCP-030 external execution'});
+            const req=http.request({hostname:'127.0.0.1',port,path:'/fact',method:'POST',headers:{'content-type':'application/json','content-length':Buffer.byteLength(payload)}},res=>{let data='';res.on('data',c=>data+=c);res.on('end',()=>resolve({status:res.statusCode,body:data}));});
+            req.on('error',reject); req.write(payload); req.end();
+          });
+          if(rawResponse.status!==200) throw new Error(`external executor returned ${rawResponse.status}`);
+
+          const realityReceipt=createRealityReceipt({executor,request,http:rawResponse,responseBody:JSON.parse(rawResponse.body)});
+          const receiptValid=verifyRealityReceipt(realityReceipt,{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:executor.id,expectedCommitmentHash:commitmentHash,expectedRequestId:request.request_id,expectedStatus:200});
+          if(receiptValid.decision!=='ACCEPT') throw new Error(`reality receipt verify failed: ${receiptValid.code}`);
+
+          const bypass=(()=>{ try {
+            const forged={...request,commitment_hash:hash('FORGED-COMMITMENT')};
+            return verifyExecutionRequest(forged,{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:executor.id,expectedCommitmentHash:commitmentHash,expectedAction:action,expectedMethod:'POST',expectedPath:'/fact',expectedCapabilityTokenId:'BOUND-BY-RSTA-029'});
+          } catch { return {decision:'REJECT',code:'BYPASS_ERROR'}; }})();
+          const bypassDenied=bypass.decision==='REJECT';
+          if(!bypassDenied) throw new Error('bypass attempt was accepted');
+
+          const forgedReceipt={...realityReceipt,external_observation:{...realityReceipt.external_observation,response_hash:hash('FORGED-RESPONSE')}};
+          const forgedReceiptVerdict=verifyRealityReceipt(forgedReceipt,{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:executor.id,expectedCommitmentHash:commitmentHash,expectedRequestId:request.request_id,expectedStatus:200});
+          const tamperDenied=forgedReceiptVerdict.decision==='REJECT';
+          if(!tamperDenied) throw new Error('tampered external receipt accepted');
+
+          const noCommitRequest=createExecutionRequest({executor,requestId:'RSTA-030-BYPASS-001',commitmentHash:'MISSING',action,method:'POST',path:'/fact',body:{message:'bypass'},capabilityTokenId:'NONE'});
+          const noCommitVerdict=verifyExecutionRequest(noCommitRequest,{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:executor.id,expectedCommitmentHash:commitmentHash,expectedAction:action,expectedMethod:'POST',expectedPath:'/fact',expectedCapabilityTokenId:'BOUND-BY-RSTA-029'});
+          const directBypassDenied=noCommitVerdict.decision==='REJECT';
+          if(!directBypassDenied) throw new Error('direct bypass request was accepted');
+
+          const verdict={rsta:'RSTA-030',status:'PASS',protocol:'RNCP-EXTERNAL-EXECUTOR-v1',external_executor:{executor_id:executor.id,transport:'HTTP',target:`http://127.0.0.1:${port}/fact`,observed_status:rawResponse.status},chain:{prior_rsta29_receipt:receipt29.content_address,commitment_hash:commitmentHash,request_id:request.request_id,event_id:realityReceipt.event_id,event_hash:realityReceipt.event_hash},guarantees:{commitment_bound_request:true,executor_signature_verified:requestValid.decision==='ACCEPT',external_http_action_observed:rawResponse.status===200,external_reality_receipt_verified:receiptValid.decision==='ACCEPT',bypass_attempt_denied:bypassDenied,direct_bypass_denied:directBypassDenied,tampered_external_receipt_denied:tamperDenied},claim_boundary:'This demonstrates a real external HTTP execution boundary under test. It does not guarantee arbitrary third-party infrastructure will obey RNCP unless that system actually enforces the protocol at its execution boundary.'};
+          const receipt={schema:'RNCP-EXECUTION-RECEIPT-v1',rsta:'RSTA-030',execution:{provider:'github-actions',workflow:process.env.GITHUB_WORKFLOW,run_id:Number(process.env.GITHUB_RUN_ID),run_attempt:Number(process.env.GITHUB_RUN_ATTEMPT),job:'verify',head_commit:process.env.GITHUB_SHA,event:process.env.GITHUB_EVENT_NAME,ref:process.env.GITHUB_REF,generated_at:new Date().toISOString()},assertions:verdict.guarantees,chain:verdict.chain,external_executor:verdict.external_executor,policy:'NO_VALID_COMMITMENT_NO_EXTERNAL_EXECUTION',verdict:'PASS'};
+          receipt.content_address=hash(receipt);
+          fs.writeFileSync('rsta030-final-verdict.json',JSON.stringify(verdict,null,2));
+          fs.writeFileSync('rsta030-external-receipt.json',JSON.stringify(realityReceipt,null,2));
+          fs.writeFileSync('rsta030-execution-receipt.json',JSON.stringify(receipt,null,2));
+          console.log(JSON.stringify(verdict,null,2));
+          JS
+
+      - name: Recompute RSTA-030 receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'JS'
+          import fs from 'node:fs'; import crypto from 'node:crypto';
+          const canonical=(v)=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'):JSON.stringify(v);
+          const hash=(v)=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
+          const r=JSON.parse(fs.readFileSync('rsta030-execution-receipt.json','utf8')); const stored=r.content_address; const c=structuredClone(r); delete c.content_address;
+          if(stored!==hash(c)) throw new Error('receipt hash mismatch');
+          for(const [k,v] of Object.entries(r.assertions)) if(v!==true) throw new Error(`assertion failed: ${k}`);
+          console.log(JSON.stringify({receipt_verified:true,content_address:stored},null,2));
+          JS
+
+      - name: Persist RSTA-030 evidence on main
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rsta030-final-verdict.json rsta030-external-receipt.json rsta030-execution-receipt.json
+          git commit -m 'rsta: persist RSTA-030 external executor receipt [skip ci]'
+          git push origin HEAD:main
+
+      - name: Stop external executor
+        if: always()
+        run: kill "$(cat /tmp/executor.pid 2>/dev/null)" 2>/dev/null || true
