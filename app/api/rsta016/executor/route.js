@@ -4,12 +4,12 @@ const PROTOCOL_VERSION = "RNCP-PORTABLE-1";
 const EXECUTOR_ID = "external-executor-vercel-rsta016";
 const IMPLEMENTATION = "standalone-node-next-route";
 const EXECUTOR_REPOSITORY = "socksninja/-";
-const EXECUTOR_REVISION = "5dc8e797f56822014f6e13dc62d27d2f085043fd";
+const EXECUTOR_REVISION = "6ce40908193b24e84eb5601812042f61636c598f";
 
 function canonical(value) {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
-  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`).join(",`)}}`;
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`).join(",")}}`;
 }
 
 function sha256(value) {
