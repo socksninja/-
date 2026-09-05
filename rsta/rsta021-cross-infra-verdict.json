@@ -1,0 +1,76 @@
+{
+  "rsta": "RSTA-021",
+  "status": "PARTIAL_PASS",
+  "scope": "cross-infrastructure quorum with two external providers plus independent local runtime",
+  "commitment": {
+    "protocol_version": "RNCP-PORTABLE-1",
+    "commitment_id": "RSTA-021-CROSS-INFRA-001",
+    "action": "POSTMAN_ECHO",
+    "payload": {
+      "message": "RSTA-021 cross infrastructure"
+    },
+    "commitment_hash": "cd7bbd3b485a36a545c28ce1258eefd0b434d194cf3bdd6a9dee2afb97fce822"
+  },
+  "executors": {
+    "A": {
+      "infrastructure": "Vercel",
+      "executor_id": "external-executor-vercel-rsta016",
+      "transport": "GET_QUERY",
+      "receipt_hash": "b83a2b98492057b3b9dee7b06e50535bea91f6925a0906622607803858c5354e",
+      "deployment_revision": "bc3b8288b9ff5638a17da537b91078701352faa1",
+      "live_execution": true
+    },
+    "B": {
+      "infrastructure": "GitHub Actions",
+      "executor_id": "github-actions-executor-rsta021",
+      "transport": "GITHUB_ACTIONS",
+      "receipt_hash": "dd93750902930bd21771511baf5b6497613a5e4cd7216d23ff115bc81cdb166b",
+      "workflow_run": 33968616420,
+      "job_id": 101313045889,
+      "live_execution": true
+    },
+    "C": {
+      "infrastructure": "independent local container runtime",
+      "executor_id": "local-container-executor-rsta021",
+      "transport": "LOCAL_CONTAINER",
+      "receipt_hash": "e50641d2a525c52c7151c8b70bd603054fff573449a4b17344d16843ec331800",
+      "live_execution": true
+    }
+  },
+  "tests": {
+    "baseline_2_of_3": {
+      "inputs": ["A=ACCEPT", "B=ACCEPT", "C=CONFLICT"],
+      "decision": "ACCEPT",
+      "reason": "QUORUM_2_OF_3",
+      "capability": "UNLOCKED"
+    },
+    "provider_failure": {
+      "scenario": "C unavailable; A and B remain valid ACCEPT",
+      "decision": "ACCEPT",
+      "reason": "QUORUM_2_OF_3_WITH_PROVIDER_FAILURE",
+      "capability": "UNLOCKED"
+    },
+    "provider_collusion_simulation": {
+      "scenario": "A and B collude and emit internally valid but false observations; C is honest/conflicting",
+      "decision": "ACCEPT",
+      "reason": "QUORUM_2_OF_3",
+      "capability": "UNLOCKED",
+      "security_boundary": "A 2-of-3 quorum cannot detect collusion of two members without an additional independent trust/observation layer"
+    },
+    "tamper": {
+      "scenario": "mutate A observed payload without changing receipt hash",
+      "decision": "REJECT",
+      "reason": "TAMPER_DETECTED",
+      "capability": "LOCKED"
+    },
+    "replay": {
+      "scenario": "duplicate execution_id across two receipts",
+      "decision": "REJECT",
+      "reason": "REPLAY_DETECTED",
+      "capability": "LOCKED"
+    }
+  },
+  "gate_policy": "Capability unlock requires a valid 2-of-3 quorum; integrity or replay failure fails closed.",
+  "strict_three_cloud_provider_claim": "NOT_CLAIMED",
+  "note": "A and B are independent provider infrastructures (Vercel and GitHub Actions); C is a separate local runtime. A third independent cloud provider was not available through the current connected zero-cost execution surface, so this artifact does not claim three independent cloud providers."
+}
