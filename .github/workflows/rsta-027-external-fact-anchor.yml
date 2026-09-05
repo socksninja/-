@@ -72,18 +72,10 @@ jobs:
           const collusionRejected='FALSE-REALITY'!==good.randomness;
           const capabilityUnlock=!!(randomnessOk&&blsOk&&collusionRejected&&tamperRejected&&replayRejected);if(!capabilityUnlock)throw new Error('capability gate failed');
           const verdict={rsta:'RSTA-027',status:'PASS',external_fact:{source:'drand-League-of-Entropy-default',chain:CHAIN,round:Number(good.round),randomness:good.randomness,signature:good.signature,relay_count:RELAYS.length},verification:{randomness_hash_binding:randomnessOk,bls_signature:blsOk,cross_relay_agreement:true,pinned_public_key:PINNED_PUBKEY},anchor:{type:'RNCP-VERIFIED-ANCHOR',version:'RNCP-VERIFIED-ANCHOR-v1',proof,evidence_hash:evidenceHash,status:'VERIFIED_EXTERNAL_FACT'},adversarial_controls:{colluder_claim_not_equal_external_fact:collusionRejected,tampered_anchor_rejected:tamperRejected,replay_rejected:replayRejected},capability_gate:{decision:'UNLOCKED',reason:'FRESH_BLS_VERIFIED_EXTERNAL_FACT_BOUND_TO_ANCHOR'},claim_boundary:'The external fact source is an additional trust boundary; this does not turn a generic 2-of-3 quorum into Byzantine consensus.',evidence_hash:shaHex({external_fact:good,relays:RELAYS,anchorCore,proof,evidenceHash})};
-          const receiptPayload={
-            schema:'RNCP-EXECUTION-RECEIPT-v1',
-            rsta:'RSTA-027',
-            execution:{provider:'github-actions',workflow:process.env.GITHUB_WORKFLOW,run_id:Number(process.env.GITHUB_RUN_ID),run_attempt:Number(process.env.GITHUB_RUN_ATTEMPT),job:'verify',head_commit:process.env.GITHUB_SHA,event:process.env.GITHUB_EVENT_NAME,ref:process.env.GITHUB_REF,generated_at:new Date().toISOString()},
-            assertions:{github_actions_execution:'OBSERVED',fresh_drand:true,bls_pass:blsOk,anchor_hash:evidenceHash,tamper_reject:tamperRejected,replay_reject:replayRejected,capability_unlocked:capabilityUnlock},
-            anchor:{type:'RNCP-VERIFIED-ANCHOR',version:'RNCP-VERIFIED-ANCHOR-v1',proof,evidence_hash:evidenceHash,status:'VERIFIED_EXTERNAL_FACT'},
-            external_fact:{source:'drand-League-of-Entropy-default',chain:CHAIN,round:Number(good.round),randomness:good.randomness,signature:good.signature,relay_count:RELAYS.length},
-            verdict:'PASS'
-          };
+          const receiptPayload={schema:'RNCP-EXECUTION-RECEIPT-v1',rsta:'RSTA-027',execution:{provider:'github-actions',workflow:process.env.GITHUB_WORKFLOW,run_id:Number(process.env.GITHUB_RUN_ID),run_attempt:Number(process.env.GITHUB_RUN_ATTEMPT),job:'verify',head_commit:process.env.GITHUB_SHA,event:process.env.GITHUB_EVENT_NAME,ref:process.env.GITHUB_REF,generated_at:new Date().toISOString()},assertions:{github_actions_execution:'OBSERVED',fresh_drand:true,bls_pass:blsOk,anchor_hash:evidenceHash,tamper_reject:tamperRejected,replay_reject:replayRejected,capability_unlocked:capabilityUnlock},anchor:{type:'RNCP-VERIFIED-ANCHOR',version:'RNCP-VERIFIED-ANCHOR-v1',proof,evidence_hash:evidenceHash,status:'VERIFIED_EXTERNAL_FACT'},external_fact:{source:'drand-League-of-Entropy-default',chain:CHAIN,round:Number(good.round),randomness:good.randomness,signature:good.signature,relay_count:RELAYS.length},verdict:'PASS'};
           receiptPayload.content_address=shaHex(receiptPayload);
-          fs.writeFileSync('rsta027-external-anchor-evidence.json',JSON.stringify({anchor:{type:'RNCP-VERIFIED-ANCHOR',version:'RNCP-VERIFIED-ANCHOR-v1',anchor_core:anchorCore,proof,evidence_hash:evidenceHash,anchor_status:'VERIFIED_EXTERNAL_FACT'},raw_beacon:good,relays:RELAYS},null,2));
           fs.writeFileSync('rsta027-execution-receipt.json',JSON.stringify(receiptPayload,null,2));
+          fs.writeFileSync('rsta027-external-anchor-evidence.json',JSON.stringify({anchor:{type:'RNCP-VERIFIED-ANCHOR',version:'RNCP-VERIFIED-ANCHOR-v1',anchor_core:anchorCore,proof,evidence_hash:evidenceHash,anchor_status:'VERIFIED_EXTERNAL_FACT'},raw_beacon:good,relays:RELAYS},null,2));
           console.log(JSON.stringify(verdict,null,2));
           JS
 
