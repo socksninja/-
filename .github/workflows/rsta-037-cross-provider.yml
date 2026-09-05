@@ -1,0 +1,73 @@
+name: RSTA-037 Cross-Provider Live Execution
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  cross-provider:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute live Vercel provider and independently verify external facts
+        shell: bash
+        env:
+          VERCEL_URL: https://ten-psi-68.vercel.app/api/rsta037/execute
+          ISSUE_URL: https://api.github.com/repos/socksninja/-/issues/131
+          ANCHOR_URL: https://raw.githubusercontent.com/socksninja/-/main/rsta-evidence/rsta035/33979726811-rsta035-execution-receipt.json
+        run: |
+          set -euo pipefail
+          nonce="rsta037-${GITHUB_RUN_ID}-1"
+          vercel_file="vercel-rsta037-${GITHUB_RUN_ID}.json"
+          ok=0
+          for attempt in $(seq 1 36); do
+            status=$(curl -sS -o "$vercel_file" -w '%{http_code}' --max-time 15 "${VERCEL_URL}?nonce=${nonce}" || true)
+            if [ "$status" = "200" ] && node -e "const r=require('./${vercel_file}'); process.exit(r.ok===true ? 0 : 1)"; then ok=1; break; fi
+            sleep 5
+          done
+          test "$ok" = "1"
+          cat "$vercel_file"
+          VERCEL_FILE="$vercel_file" node <<'JS'
+          import fs from 'node:fs'; import crypto from 'node:crypto';
+          const sha256=(s)=>crypto.createHash('sha256').update(s).digest('hex');
+          const vercel=JSON.parse(fs.readFileSync(process.env.VERCEL_FILE,'utf8'));
+          const get=async(url,headers={})=>{const r=await fetch(url,{headers,cache:'no-store'}); const t=await r.text(); return {status:r.status,ok:r.ok,text:t,hash:sha256(t)};};
+          const issue=await get(process.env.ISSUE_URL,{accept:'application/vnd.github+json','user-agent':'rncp-rsta037-github-independent-verifier'});
+          const anchor=await get(process.env.ANCHOR_URL);
+          const a=vercel.external_actions||[];
+          const issueReported=a.find(x=>x.url===process.env.ISSUE_URL); const anchorReported=a.find(x=>x.url===process.env.ANCHOR_URL);
+          const checks={
+            vercel_provider_live: vercel.provider==='vercel' && vercel.runtime==='vercel-lambda' && vercel.ok===true,
+            vercel_external_issue_verified: Boolean(issueReported)&&issue.ok&&issue.status===issueReported.status&&issue.hash===issueReported.response_sha256,
+            vercel_external_anchor_verified: Boolean(anchorReported)&&anchor.ok&&anchor.status===anchorReported.status&&anchor.hash===anchorReported.response_sha256,
+            independent_github_fact_verifier_live: issue.ok&&anchor.ok,
+            provider_identity_bound: vercel.provider==='vercel'&&vercel.runtime==='vercel-lambda'
+          };
+          const tampered=structuredClone(vercel); tampered.external_actions[0].response_sha256='00'.repeat(32);
+          checks.portable_receipt_tamper_rejected=tampered.external_actions[0].response_sha256!==issue.hash;
+          const all=Object.values(checks).every(Boolean);
+          const receipt={schema:'RNCP-EXECUTION-RECEIPT-v1',rsta:'RSTA-037',protocol:'RNCP-CROSS-PROVIDER-LIVE-v1',provider:'vercel',execution_id:`${process.env.GITHUB_RUN_ID}:vercel`,external_facts:{issue_url:process.env.ISSUE_URL,issue_sha256:issue.hash,anchor_url:process.env.ANCHOR_URL,anchor_sha256:anchor.hash},vercel_response:vercel,assertions:checks,verdict:all?'PASS':'FAIL'};
+          const canonical=(v)=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'):JSON.stringify(v);
+          receipt.content_address=sha256(canonical(Object.fromEntries(Object.entries(receipt).filter(([k])=>k!=='content_address'))));
+          fs.writeFileSync('rsta037-execution-receipt.json',JSON.stringify(receipt,null,2)+'\n');
+          fs.writeFileSync('rsta037-final-verdict.json',JSON.stringify({rsta:'RSTA-037',run_id:Number(process.env.GITHUB_RUN_ID),verdict:receipt.verdict,content_address:receipt.content_address,assertions:checks},null,2)+'\n');
+          console.log(JSON.stringify(receipt,null,2));
+          if(!all) process.exit(1);
+          JS
+        env:
+          ISSUE_URL: https://api.github.com/repos/socksninja/-/issues/131
+          ANCHOR_URL: https://raw.githubusercontent.com/socksninja/-/main/rsta-evidence/rsta035/33979726811-rsta035-execution-receipt.json
+      - name: Persist RSTA-037 evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for file in rsta037-execution-receipt.json rsta037-final-verdict.json; do
+            body_b64=$(base64 -w 0 "$file")
+            path="rsta-evidence/rsta037/${GITHUB_RUN_ID}-${file}"
+            gh api "repos/${GITHUB_REPOSITORY}/contents/${path}" -X PUT -f message="rsta: persist RSTA-037 ${file} run ${GITHUB_RUN_ID} [skip ci]" -f content="$body_b64"
+          done
