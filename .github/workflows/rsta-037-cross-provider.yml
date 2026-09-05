@@ -42,8 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           commitment_id=$(node -e "console.log(JSON.parse(require('fs').readFileSync('rsta037-commitment.json')).commitment_id)")
-          action=$(node -e "console.log(encodeURIComponent(JSON.parse(require('fs').readFileSync('rsta037-commitment.json')).action))")
-          payload=$(node -e "console.log(encodeURIComponent(JSON.stringify(JSON.parse(require('fs').readFileSync('rsta037-commitment.json')).payload)))")
+          payload=$(node -e "console.log(JSON.stringify(JSON.parse(require('fs').readFileSync('rsta037-commitment.json')).payload))")
           curl -fsS --max-time 20 -G "$VERCEL_EXECUTOR_URL" \
             --data-urlencode "commitment_id=${commitment_id}" \
             --data-urlencode "action=RSTA037_CROSS_PROVIDER_PROBE" \
@@ -52,8 +51,6 @@ jobs:
           cat vercel-executor.json
 
       - name: Build and verify provider-neutral receipts
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           node --input-type=module <<'JS'
@@ -62,26 +59,14 @@ jobs:
           const commitment=JSON.parse(fs.readFileSync('rsta037-commitment.json','utf8'));
           const issue=JSON.parse(fs.readFileSync('github-action.json','utf8'));
           const vercel=JSON.parse(fs.readFileSync('vercel-executor.json','utf8'));
-          const envelope={protocol_version:commitment.protocol_version,commitment_id:commitment.commitment_id,action:commitment.action,payload:commitment.payload};
-          const commitment_hash=sha256(envelope);
+          const commitment_hash=sha256({protocol_version:commitment.protocol_version,commitment_id:commitment.commitment_id,action:commitment.action,payload:commitment.payload});
           const githubCore={protocol_version:commitment.protocol_version,commitment_id:commitment.commitment_id,commitment_hash,execution_id:`github-actions:${commitment.commitment_id}`,executor_id:'github-actions',executor_revision:process.env.GITHUB_SHA,observed:{status:'EXECUTED',action:commitment.action,payload:commitment.payload,external_issue:{number:issue.number,url:issue.html_url}}};
           const githubReceipt={...githubCore,receipt_hash:sha256(githubCore)};
           const vercelReceipt=vercel.reality_receipt;
-          const githubVerify=verifyPortableReceipt(githubReceipt);
-          const vercelVerify=verifyPortableReceipt(vercelReceipt);
+          const githubVerify=verifyPortableReceipt(githubReceipt); const vercelVerify=verifyPortableReceipt(vercelReceipt);
           const tampered={...githubReceipt,receipt_hash:'00'.repeat(32)};
-          const tamperVerify=verifyPortableReceipt(tampered);
-          const replayRejected=!assertNoReplay([githubReceipt,githubReceipt]) || githubReceipt.execution_id!==vercelReceipt.execution_id;
-          const checks={
-            shared_commitment_hash: githubReceipt.commitment_hash===vercelReceipt.commitment_hash,
-            github_real_external_action: Number.isInteger(issue.number) && typeof issue.html_url==='string',
-            github_receipt_accepted: githubVerify.decision==='ACCEPT',
-            vercel_live_executor_accepted: vercelVerify.decision==='ACCEPT',
-            same_portable_verifier_core: githubVerify.decision==='ACCEPT' && vercelVerify.decision==='ACCEPT',
-            provider_identities_distinct: githubReceipt.executor_id!==vercelReceipt.executor_id,
-            tampered_receipt_rejected: tamperVerify.decision==='REJECT',
-            replay_rejected: replayRejected,
-          };
+          const replayRejected=assertNoReplay([githubReceipt,githubReceipt])===false;
+          const checks={shared_commitment_hash:githubReceipt.commitment_hash===vercelReceipt.commitment_hash,github_real_external_action:Number.isInteger(issue.number)&&typeof issue.html_url==='string',github_receipt_accepted:githubVerify.decision==='ACCEPT',vercel_live_executor_accepted:vercelVerify.decision==='ACCEPT',same_portable_verifier_core:githubVerify.decision==='ACCEPT'&&vercelVerify.decision==='ACCEPT',provider_identities_distinct:githubReceipt.executor_id!==vercelReceipt.executor_id,tampered_receipt_rejected:verifyPortableReceipt(tampered).decision==='REJECT',replay_rejected:replayRejected};
           const verdict=Object.values(checks).every(Boolean)?'PASS':'FAIL';
           const receipt={schema:'RNCP-EXECUTION-RECEIPT-v1',rsta:'RSTA-037',protocol:'RNCP-CROSS-PROVIDER-LIVE-v1',commitment,providers:{github:githubReceipt,vercel:vercelReceipt},checks,verdict};
           receipt.content_address=sha256(Object.fromEntries(Object.entries(receipt).filter(([k])=>k!=='content_address')));
