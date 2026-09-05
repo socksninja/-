@@ -1,0 +1,152 @@
+{
+  "rsta": "RSTA-024",
+  "status": "PASS",
+  "invariant": "CAPABILITY_UNLOCKED and EXECUTED require a freshly verified Reality Anchor plus recomputed proof binding",
+  "baseline": {
+    "gate": {
+      "decision": "ACCEPT",
+      "capability": "CAPABILITY_UNLOCKED"
+    },
+    "execution": {
+      "execution": "EXECUTED",
+      "body": {
+        "commitment": "RSTA-024-CAPABILITY-ANCHOR-001",
+        "action": "RSTA024_EXTERNAL_CAPABILITY_EXECUTION",
+        "anchor_round": 6439521,
+        "anchor_proof": "f6e661879eeddd4e1eb647e4369e806aa739c31650a7569bd931c29651c79dae"
+      }
+    },
+    "external_http_status": 200,
+    "external_response_sha256": "ce61cc4d3eb7c1b737638b7aca884ce5d32bc1963516fb9c53ea6eb60f1a4714",
+    "action_invocations": 1
+  },
+  "anchor": {
+    "chain": "8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce",
+    "round": 6439521,
+    "signature": "967dda83b2750c6345a8c4e079669203e9a2ffd85bc4f82759e0448fd45b9bb28e55d22ba51d2cfa125e06244d5044e20f6313c4cf9a59851b7604b480be34fc93f0d6516390c18b10078717b27cda8969daedc4b4df06e7e911bdc01e82d50c",
+    "previous_signature": "8bb79646218ba6250f1ef9f15a11c167b2c03e652012d8264501ba9322e6a4a985325fdc6434f28df0b053d39a5ca00a15c0ce05c422a9e5de29d478681101d9122f3ae215b980fee82d4f6d6b5be61b67aa9a0654bb1cf7ab51a3647b49382c",
+    "cryptographically_valid": true,
+    "relay_count": 3,
+    "cross_relay_agreement": true,
+    "continuity": true,
+    "evidence_hash": "28109e3eb09faa063460890d8c383c9d932e04d88134b5ef4e70a8b280a146d8",
+    "proof": "f6e661879eeddd4e1eb647e4369e806aa739c31650a7569bd931c29651c79dae",
+    "checks": [
+      {
+        "round": 6439519,
+        "rounds_equal": true,
+        "signatures_equal": true,
+        "previous_signatures_equal": true,
+        "bls": true,
+        "randomness": true
+      },
+      {
+        "round": 6439520,
+        "rounds_equal": true,
+        "signatures_equal": true,
+        "previous_signatures_equal": true,
+        "bls": true,
+        "randomness": true
+      },
+      {
+        "round": 6439521,
+        "rounds_equal": true,
+        "signatures_equal": true,
+        "previous_signatures_equal": true,
+        "bls": true,
+        "randomness": true
+      }
+    ],
+    "chain_links": [
+      {
+        "from": 6439519,
+        "to": 6439520,
+        "linked": true
+      },
+      {
+        "from": 6439520,
+        "to": 6439521,
+        "linked": true
+      }
+    ]
+  },
+  "negative_controls": {
+    "no_anchor": {
+      "decision": "REJECT",
+      "capability": "CAPABILITY_LOCKED",
+      "execution_attempted": false,
+      "action_invocations_delta": 0
+    },
+    "tampered_signature": {
+      "decision": "REJECT",
+      "capability": "CAPABILITY_LOCKED",
+      "execution_attempted": false,
+      "action_invocations_delta": 0
+    },
+    "tampered_previous_signature": {
+      "decision": "REJECT",
+      "capability": "CAPABILITY_LOCKED",
+      "execution_attempted": false,
+      "action_invocations_delta": 0
+    },
+    "wrong_round": {
+      "decision": "REJECT",
+      "capability": "CAPABILITY_LOCKED",
+      "execution_attempted": false,
+      "action_invocations_delta": 0
+    },
+    "stale_round": {
+      "decision": "REJECT",
+      "capability": "CAPABILITY_LOCKED",
+      "execution_attempted": false,
+      "action_invocations_delta": 0
+    },
+    "broken_chain": {
+      "decision": "REJECT",
+      "capability": "CAPABILITY_LOCKED",
+      "execution_attempted": false,
+      "action_invocations_delta": 0
+    },
+    "non_cryptographic": {
+      "decision": "REJECT",
+      "capability": "CAPABILITY_LOCKED",
+      "execution_attempted": false,
+      "action_invocations_delta": 0
+    },
+    "relay_disagreement": {
+      "decision": "REJECT",
+      "capability": "CAPABILITY_LOCKED",
+      "execution_attempted": false,
+      "action_invocations_delta": 0
+    },
+    "wrong_chain": {
+      "decision": "REJECT",
+      "capability": "CAPABILITY_LOCKED",
+      "execution_attempted": false,
+      "action_invocations_delta": 0
+    },
+    "tampered_proof": {
+      "decision": "REJECT",
+      "capability": "CAPABILITY_LOCKED",
+      "execution_attempted": false,
+      "action_invocations_delta": 0
+    },
+    "tampered_evidence_hash": {
+      "decision": "REJECT",
+      "capability": "CAPABILITY_LOCKED",
+      "execution_attempted": false,
+      "action_invocations_delta": 0
+    },
+    "copied_proof_with_payload_change": {
+      "decision": "REJECT",
+      "capability": "CAPABILITY_LOCKED",
+      "execution_attempted": false,
+      "action_invocations_delta": 0
+    }
+  },
+  "fail_closed": {
+    "all_invalid_cases_rejected": true,
+    "zero_negative_side_effects": true
+  },
+  "evidence_hash": "9ebfe770749919191ff94593b2ec5df05a47c0bb7310e75ebf232c75da01a1dc"
+}
