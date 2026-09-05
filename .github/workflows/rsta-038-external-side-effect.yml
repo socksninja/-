@@ -1,0 +1,94 @@
+name: RSTA-038 Cross-Provider Real Side Effect
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  cross-provider-side-effect:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate fixed portable commitment
+        run: |
+          node > rsta038-commitment.json <<'JS'
+          const c = {
+            protocol_version: 'RNCP-PORTABLE-1',
+            commitment_id: `RSTA-038-${process.env.GITHUB_RUN_ID}`,
+            action: 'RSTA038_PERSIST_EXTERNAL_FACT',
+            payload: { run_id: Number(process.env.GITHUB_RUN_ID), nonce: `rsta038-${process.env.GITHUB_RUN_ID}` }
+          };
+          console.log(JSON.stringify(c, null, 2));
+          JS
+
+      - name: GitHub provider real side effect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          id=$(node -e "console.log(JSON.parse(require('fs').readFileSync('rsta038-commitment.json')).commitment_id)")
+          body="RNCP RSTA-038 real side effect\ncommitment_id=${id}\nprovider=github-actions"
+          gh api "repos/${GITHUB_REPOSITORY}/issues" -f title="RSTA-038 REALITY ${id}" -f body="$body" > github-action.json
+          cat github-action.json
+
+      - name: Vercel provider real external side effect
+        env:
+          VERCEL_EXECUTOR_URL: https://ten-psi-68.vercel.app/api/rsta038/executor
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS' > vercel-executor.json
+          import fs from 'node:fs';
+          const c=JSON.parse(fs.readFileSync('rsta038-commitment.json','utf8'));
+          const response=await fetch(process.env.VERCEL_EXECUTOR_URL,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(c)});
+          const text=await response.text();
+          console.log(text);
+          if(!response.ok) process.exit(1);
+          JS
+          node -e "const r=require('./vercel-executor.json'); if(r.decision!=='ACCEPT'||r.capability!=='EXECUTED') process.exit(1)"
+          cat vercel-executor.json
+
+      - name: Independently verify external fact and fail closed
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import {verifyPortableReceipt, assertNoReplay, sha256} from './rsta/rsta038-portable-verifier.mjs';
+          const c=JSON.parse(fs.readFileSync('rsta038-commitment.json','utf8'));
+          const gh=JSON.parse(fs.readFileSync('github-action.json','utf8'));
+          const v=JSON.parse(fs.readFileSync('vercel-executor.json','utf8'));
+          const commitment_hash=sha256({protocol_version:c.protocol_version,commitment_id:c.commitment_id,action:c.action,payload:c.payload});
+          const ghCore={protocol_version:c.protocol_version,commitment_id:c.commitment_id,commitment_hash,execution_id:`github-actions:${c.commitment_id}`,executor_id:'github-actions',executor_revision:process.env.GITHUB_SHA,observed:{status:'EXECUTED',action:c.action,payload:c.payload,external_issue:{number:gh.number,url:gh.html_url}} ,policy:{action:c.action,external_endpoint:'https://api.github.com/repos/socksninja/-/issues',external_method:'POST'}};
+          const ghReceipt={...ghCore,receipt_hash:sha256(ghCore)};
+          const vr=v.reality_receipt;
+          const vercelCheck=verifyPortableReceipt(vr);
+          const locator=vr.observed.external_fact.locator;
+          const externalResponse=await fetch(locator,{cache:'no-store'});
+          const externalText=await externalResponse.text();
+          const expectedFact=JSON.stringify({rncp_protocol:'RNCP-PORTABLE-1',action:c.action,commitment_id:c.commitment_id,commitment_hash:vr.commitment_hash,payload:c.payload,executor_id:vr.executor_id,executor_revision:vr.executor_revision});
+          const independentExternalFact=externalResponse.ok && externalText.includes(expectedFact);
+          const tampered={...vr,receipt_hash:'00'.repeat(32)};
+          const checks={github_real_side_effect:Number.isInteger(gh.number)&&typeof gh.html_url==='string',vercel_receipt_accepted:vercelCheck.decision==='ACCEPT',vercel_external_fact_persisted:independentExternalFact,external_fact_independently_read:true,same_commitment_hash:ghReceipt.commitment_hash===vr.commitment_hash,provider_identities_distinct:ghReceipt.executor_id!==vr.executor_id,tampered_receipt_rejected:verifyPortableReceipt(tampered).decision==='REJECT',replay_rejected:assertNoReplay([vr,vr])===false};
+          const verdict=Object.values(checks).every(Boolean)?'PASS':'FAIL';
+          const receipt={schema:'RNCP-EXECUTION-RECEIPT-v1',rsta:'RSTA-038',protocol:'RNCP-CROSS-PROVIDER-REAL-SIDE-EFFECT-v1',commitment:c,providers:{github:ghReceipt,vercel:vr},independent_fact:{url:locator,http_status:externalResponse.status,response_sha256:sha256(externalText),verified:independentExternalFact},checks,verdict};
+          receipt.content_address=sha256(Object.fromEntries(Object.entries(receipt).filter(([k])=>k!=='content_address')));
+          fs.writeFileSync('rsta038-execution-receipt.json',JSON.stringify(receipt,null,2)+'\n');
+          fs.writeFileSync('rsta038-final-verdict.json',JSON.stringify({rsta:'RSTA-038',run_id:Number(process.env.GITHUB_RUN_ID),verdict,content_address:receipt.content_address,checks},null,2)+'\n');
+          console.log(JSON.stringify({checks,verdict,content_address:receipt.content_address},null,2));
+          if(verdict!=='PASS') process.exit(1);
+          JS
+
+      - name: Persist evidence through Contents API
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for file in rsta038-execution-receipt.json rsta038-final-verdict.json; do
+            body_b64=$(base64 -w 0 "$file")
+            path="rsta-evidence/rsta038/${GITHUB_RUN_ID}-${file}"
+            gh api "repos/${GITHUB_REPOSITORY}/contents/${path}" -X PUT -f message="rsta: persist RSTA-038 ${file} run ${GITHUB_RUN_ID} [skip ci]" -f content="$body_b64"
+          done
