@@ -2,6 +2,8 @@ name: RSTA-038 External Sink Smoke
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 
 jobs:
   sink-smoke:
