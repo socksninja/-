@@ -1,0 +1,21 @@
+name: RSTA-038 External Sink Smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sink-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Real keyless create and independent read
+        run: |
+          set -euo pipefail
+          payload=$(node -e 'console.log(JSON.stringify({rncp_protocol:"RNCP-PORTABLE-1",rsta:"RSTA-038-SINK-SMOKE",nonce:process.env.GITHUB_RUN_ID}))')
+          response=$(curl -fsS --max-time 20 -X POST 'https://www.pastepile.com/api/public/pastes' -H 'Content-Type: application/json' -d "$(node -e 'const p=JSON.parse(process.argv[1]); console.log(JSON.stringify({content:JSON.stringify(p),expiry:"1d"}))' "$payload")")
+          echo "$response"
+          slug=$(node -e 'const r=JSON.parse(process.argv[1]); if(!r.slug) process.exit(1); console.log(r.slug)' "$response")
+          api_url="https://www.pastepile.com/api/public/pastes/${slug}"
+          readback=$(curl -fsS --max-time 20 "$api_url")
+          echo "$readback"
+          node -e 'const r=JSON.parse(process.argv[1]); const expected=process.argv[2]; const got=r.files?.[0]?.content; if(got!==expected) { console.error({expected,got}); process.exit(1) }' "$readback" "$payload"
+          echo "SINK_SMOKE_PASS slug=$slug api=$api_url"
