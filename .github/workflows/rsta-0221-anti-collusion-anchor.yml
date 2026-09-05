@@ -1,6 +1,10 @@
 name: RSTA-022.1 Anti-Collusion External Anchor
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rsta-0221-anti-collusion-anchor.yml'
   workflow_dispatch:
 
 permissions:
@@ -18,7 +22,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import copy, hashlib, json, time, urllib.request
+          import copy, hashlib, json, urllib.request
           from pathlib import Path
 
           def canonical(v):
@@ -66,9 +70,6 @@ jobs:
               return sha(core) == r['receipt_hash'] and r['commitment_hash'] == expected_hash
           assert all(integrity(x) for x in [a,b,c,ca,cb])
 
-          # External HTTPS observation. This proves the observation crossed a real
-          # network boundary, but is deliberately treated as an echo/transport anchor,
-          # not as an independent source of truth about the outside world.
           anchor_payload = {
               'commitment_id': expected['commitment_id'],
               'action': expected['action'],
@@ -83,11 +84,7 @@ jobs:
           with urllib.request.urlopen(req, timeout=20) as resp:
               external = json.loads(resp.read().decode())
           assert external.get('json') == anchor_payload
-          anchor = {
-              'source':'https://httpbin.org/post',
-              'transport':'HTTPS_EXTERNAL',
-              'observed':external['json'],
-          }
+          anchor = {'source':'https://httpbin.org/post','transport':'HTTPS_EXTERNAL','observed':external['json']}
           anchor['anchor_hash'] = sha(anchor['observed'])
 
           def quorum(rs):
@@ -98,18 +95,11 @@ jobs:
               positives = sum(r['decision']=='ACCEPT' and r['capability']=='EXECUTED' for r in rs)
               return ('ACCEPT','QUORUM_2_OF_3') if positives >= 2 else ('REJECT','NO_QUORUM')
 
-          baseline = quorum([a,b,c])
-          assert baseline == ('ACCEPT','QUORUM_2_OF_3')
-
-          # Real one-member-loss computation: remove C, then require both A and B.
+          baseline = quorum([a,b,c]); assert baseline == ('ACCEPT','QUORUM_2_OF_3')
           provider_loss = ('ACCEPT','SURVIVES_C_LOSS') if all(integrity(r) for r in [a,b]) else ('REJECT','PROVIDER_LOSS')
           assert provider_loss == ('ACCEPT','SURVIVES_C_LOSS')
+          collusion = quorum([ca,cb,c]); assert collusion == ('ACCEPT','QUORUM_2_OF_3')
 
-          collusion = quorum([ca,cb,c])
-          assert collusion == ('ACCEPT','QUORUM_2_OF_3')
-
-          # Correct anchor projection: colluders claim FALSE-REALITY while the external
-          # observation contains the committed message, so capability stays locked.
           colluder_claim = ca['observed']['payload']['message']
           external_truth = anchor['observed']['message']
           anchor_gate = ('REJECT','REALITY_ANCHOR_MISMATCH') if colluder_claim != external_truth else ('ACCEPT','ANCHOR_MATCH')
@@ -125,8 +115,6 @@ jobs:
           replay = quorum(replayed)[0]
           assert replay == 'REJECT'
 
-          final_honest = 'ACCEPT' if baseline[0]=='ACCEPT' and anchor_gate[0] != 'REJECT' else 'REJECT'
-          # For honest scenario the anchor matches the committed payload directly.
           final_honest = 'ACCEPT' if baseline[0]=='ACCEPT' and external_truth == expected['payload']['message'] else 'REJECT'
           final_collusion = 'REJECT' if collusion[0]=='ACCEPT' and anchor_gate[0]=='REJECT' else 'ACCEPT'
           assert final_honest == 'ACCEPT'
