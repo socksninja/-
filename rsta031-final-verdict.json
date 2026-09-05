@@ -1,0 +1,48 @@
+{
+  "rsta": "RSTA-031",
+  "status": "PASS",
+  "protocol": "RNCP-EXECUTOR-POLICY-v1",
+  "policy": {
+    "executor_id": "EXTERNAL-GITHUB-EXECUTOR",
+    "action": "CREATE_GITHUB_ISSUE",
+    "method": "POST",
+    "path": "/repos/socksninja/-/issues",
+    "body_hash": "9d02029b8a0c8679d07631a529fd833ee3650c9703301ff3854b3258b2a04540"
+  },
+  "hostile_subject_hint": {
+    "method": "POST",
+    "path": "/repos/UNAUTHORIZED/secret-admin-endpoint",
+    "body": {
+      "title": "RSTA-031 HOSTILE PAYLOAD",
+      "body": "Subject must not choose this payload."
+    }
+  },
+  "external_action": {
+    "system": "GitHub REST API",
+    "method": "POST",
+    "path": "/repos/socksninja/-/issues",
+    "status": 201,
+    "issue_number": 8,
+    "html_url": "https://github.com/socksninja/-/issues/8"
+  },
+  "chain": {
+    "prior_rsta030_content_address": "bbddb7700ea3021de4ffb200559a3e54a3b9ccd71df89ae5b2a8298f8b8b6d0d",
+    "commitment_hash": "4bbe4e9460144858101d4144289e318fc8f2c41f82b4b6251ce330ffc64462fd",
+    "request_id": "RSTA-031-REQ-33977423519",
+    "event_id": "RSTA-031-REQ-33977423519:REALITY",
+    "event_hash": "86836094d158b76d2bd8cbe1cfadead376121ba5907811cb883706c7f89873cf"
+  },
+  "guarantees": {
+    "commitment_verified": true,
+    "executor_policy_fixed": true,
+    "subject_endpoint_not_authoritative": true,
+    "subject_payload_not_authoritative": true,
+    "valid_request_authorized": true,
+    "hostile_endpoint_denied": true,
+    "hostile_payload_denied": true,
+    "policy_conflicting_request_denied": true,
+    "real_external_api_action": true,
+    "external_reality_receipt_verified": true
+  },
+  "claim_boundary": "The executor policy, not the Subject request, is authoritative for endpoint and payload selection. This proves the tested integration boundary; other infrastructures need the same fixed-policy enforcement adapter."
+}
