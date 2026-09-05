@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 33981815362,
+    "run_id": 33981876938,
     "job": "executor",
-    "head_commit": "e448ac8173c24dff0bea25d5013d6a12a2a507c9",
+    "head_commit": "059187cb02e7201c2e50ba6e881e06eaa458af7f",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-05T17:43:08.574Z"
+    "generated_at": "2026-09-05T17:44:27.606Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "a84e1101d127e0e9fe4e02e7fe6a3310a5f15e95a74c72b6dd9da55f0258c20d"
+    "body_hash": "cd86523a9a51a5a4d54fa6626ebf0faf81258a46a8230f079e96e1a7d662f1c6"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 339,
-    "html_url": "https://github.com/socksninja/-/issues/339"
+    "issue_number": 349,
+    "html_url": "https://github.com/socksninja/-/issues/349"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "a998079324982c263adf63bf964c1df9caab799f517ea1f1c86028bda238596a",
-    "request_id": "RSTA-031-REQ-33981815362",
-    "event_id": "RSTA-031-REQ-33981815362:REALITY",
-    "event_hash": "22b6d5532ca7059a1928bf20b121fdd7597832f13c572b361d8b548b915b4ed0"
+    "commitment_hash": "e0c04a972b9e6d1593c4f37a8af20ca572b11303ad95a03c7df8eec1a669c97c",
+    "request_id": "RSTA-031-REQ-33981876938",
+    "event_id": "RSTA-031-REQ-33981876938:REALITY",
+    "event_hash": "28de2f32a5b7762ccd665c7e575a4d6cdc2a08f4eb9b443d7661d030afca6c2d"
   },
   "verdict": "PASS",
-  "content_address": "1c608b473945591b2a919ce8df486603d9257cba6c8a06787c5b40aab53283ee"
+  "content_address": "6f794d272a2e0cb82769a368752d940fe2fe1941946f30a17900e6288b3027e4"
 }
