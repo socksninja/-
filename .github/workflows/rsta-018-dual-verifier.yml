@@ -12,8 +12,7 @@ on:
 permissions:
   contents: read
 
-# Verify only the durable repository state containing both receipts.
-# Two independent implementations (Python + Node) must agree.
+# Verify durable shared-receipt state with two independent implementations.
 
 jobs:
   python-verifier:
@@ -35,14 +34,16 @@ jobs:
           b = json.load(open('rsta/rsta018-executor2-live-receipt.json', encoding='utf-8'))['receipt']
           for r in (a,b):
               assert r['decision'] == 'ACCEPT' and r['capability'] == 'EXECUTED'
-              commitment = {k:r[k] for k in ['protocol_version','commitment_id','action','payload']}
+              action = r.get('action', r['observed']['action'])
+              payload = r.get('payload', r['observed']['payload'])
+              commitment = {'protocol_version':r['protocol_version'],'commitment_id':r['commitment_id'],'action':action,'payload':payload}
               assert sha(commitment) == r['commitment_hash']
               core = {k:r[k] for k in ['protocol_version','commitment_id','commitment_hash','execution_id','executor_id','implementation','executor_repository','executor_revision','transport','observed']}
               assert sha(core) == r['receipt_hash']
           assert a['commitment_id'] == b['commitment_id']
           assert a['protocol_version'] == b['protocol_version']
-          assert a['action'] == b['action']
-          assert a['payload'] == b['payload']
+          assert a.get('action', a['observed']['action']) == b.get('action', b['observed']['action'])
+          assert a.get('payload', a['observed']['payload']) == b.get('payload', b['observed']['payload'])
           assert a['commitment_hash'] == b['commitment_hash']
           assert a['observed'] == b['observed']
           assert a['executor_id'] != b['executor_id']
@@ -69,27 +70,23 @@ jobs:
       - name: Verify both receipts and conflict rejection in Node
         run: |
           node <<'NODE'
-          const fs = require('fs'), crypto = require('crypto');
-          const canonical = v => {
-            if (v === null || typeof v !== 'object') return JSON.stringify(v);
-            if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
-            return `{${Object.keys(v).sort().map(k => `${JSON.stringify(k)}:${canonical(v[k])}`).join(',')}}`;
-          };
-          const sha = v => crypto.createHash('sha256').update(canonical(v), 'utf8').digest('hex');
-          const a = JSON.parse(fs.readFileSync('rsta/rsta016-live-evidence.json','utf8')).remote_receipt;
-          const b = JSON.parse(fs.readFileSync('rsta/rsta018-executor2-live-receipt.json','utf8')).receipt;
-          for (const r of [a,b]) {
-            if (r.decision !== 'ACCEPT' || r.capability !== 'EXECUTED') throw Error('execution status invalid');
-            const commitment = {protocol_version:r.protocol_version, commitment_id:r.commitment_id, action:r.action, payload:r.payload};
-            if (sha(commitment) !== r.commitment_hash) throw Error('commitment hash mismatch');
-            const core = {protocol_version:r.protocol_version, commitment_id:r.commitment_id, commitment_hash:r.commitment_hash, execution_id:r.execution_id, executor_id:r.executor_id, implementation:r.implementation, executor_repository:r.executor_repository, executor_revision:r.executor_revision, transport:r.transport, observed:r.observed};
-            if (sha(core) !== r.receipt_hash) throw Error('receipt hash mismatch');
+          const fs=require('fs'),crypto=require('crypto');
+          const canonical=v=>{if(v===null||typeof v!=='object')return JSON.stringify(v);if(Array.isArray(v))return `[${v.map(canonical).join(',')}]`;return `{${Object.keys(v).sort().map(k=>`${JSON.stringify(k)}:${canonical(v[k])}`).join(',')}}`;};
+          const sha=v=>crypto.createHash('sha256').update(canonical(v),'utf8').digest('hex');
+          const a=JSON.parse(fs.readFileSync('rsta/rsta016-live-evidence.json','utf8')).remote_receipt;
+          const b=JSON.parse(fs.readFileSync('rsta/rsta018-executor2-live-receipt.json','utf8')).receipt;
+          const projection=r=>({protocol_version:r.protocol_version,commitment_id:r.commitment_id,action:r.action??r.observed.action,payload:r.payload??r.observed.payload,commitment_hash:r.commitment_hash,observed:r.observed});
+          for(const r of [a,b]){
+            if(r.decision!=='ACCEPT'||r.capability!=='EXECUTED')throw Error('execution status invalid');
+            const p=projection(r);
+            if(sha({protocol_version:p.protocol_version,commitment_id:p.commitment_id,action:p.action,payload:p.payload})!==r.commitment_hash)throw Error('commitment hash mismatch');
+            const core={protocol_version:r.protocol_version,commitment_id:r.commitment_id,commitment_hash:r.commitment_hash,execution_id:r.execution_id,executor_id:r.executor_id,implementation:r.implementation,executor_repository:r.executor_repository,executor_revision:r.executor_revision,transport:r.transport,observed:r.observed};
+            if(sha(core)!==r.receipt_hash)throw Error('receipt hash mismatch');
           }
-          const projection = r => JSON.stringify({v:r.protocol_version,id:r.commitment_id,action:r.action,payload:r.payload,h:r.commitment_hash,obs:r.observed});
-          if (projection(a) !== projection(b)) throw Error('cross-executor conflict');
-          if (a.executor_id === b.executor_id) throw Error('executors are not distinct');
-          const conflict = JSON.parse(JSON.stringify(b)); conflict.observed.payload.message = 'CONFLICT-INJECTED';
-          if (projection(a) === projection(conflict)) throw Error('conflict injection not detected');
+          if(JSON.stringify(projection(a))!==JSON.stringify(projection(b)))throw Error('cross-executor conflict');
+          if(a.executor_id===b.executor_id)throw Error('executors are not distinct');
+          const conflict=JSON.parse(JSON.stringify(projection(b))); conflict.observed.payload.message='CONFLICT-INJECTED';
+          if(JSON.stringify(projection(a))===JSON.stringify(conflict))throw Error('conflict injection not detected');
           console.log('RSTA-018-NODE=PASS');
           console.log('receipt_A_integrity=true');
           console.log('receipt_B_integrity=true');
@@ -98,7 +95,7 @@ jobs:
           console.log('distinct_executors=true');
           console.log('conflict_detection=true');
           console.log('conflict_result=REJECT');
-          console.log('commitment_hash=' + a.commitment_hash);
-          console.log('receipt_A_hash=' + a.receipt_hash);
-          console.log('receipt_B_hash=' + b.receipt_hash);
+          console.log('commitment_hash='+a.commitment_hash);
+          console.log('receipt_A_hash='+a.receipt_hash);
+          console.log('receipt_B_hash='+b.receipt_hash);
           NODE
