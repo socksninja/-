@@ -36,10 +36,11 @@ jobs:
 
           assert r['decision'] == 'ACCEPT'
           assert r['capability'] == 'EXECUTED'
-          assert r['protocol_version'] == 'RNCP-PORTABLE-1' if 'protocol_version' in r else True
+          assert r['protocol_version'] == 'RNCP-PORTABLE-1'
+          assert r['commitment_id'] == c['commitment_id']
 
           commitment_envelope = {
-              'protocol_version': 'RNCP-PORTABLE-1',
+              'protocol_version': r['protocol_version'],
               'commitment_id': c['commitment_id'],
               'action': c['action'],
               'payload': c['payload'],
@@ -47,12 +48,22 @@ jobs:
           commitment_hash = sha(commitment_envelope)
           assert commitment_hash == r['commitment_hash'], (commitment_hash, r['commitment_hash'])
 
-          unsigned = dict(r)
-          unsigned.pop('receipt_hash')
-          receipt_hash = sha(unsigned)
+          receipt_core = {
+              'protocol_version': r['protocol_version'],
+              'commitment_id': r['commitment_id'],
+              'commitment_hash': r['commitment_hash'],
+              'execution_id': r['execution_id'],
+              'executor_id': r['executor_id'],
+              'implementation': r['implementation'],
+              'executor_repository': r['executor_repository'],
+              'executor_revision': r['executor_revision'],
+              'transport': r['transport'],
+              'observed': r['observed'],
+          }
+          receipt_hash = sha(receipt_core)
           assert receipt_hash == r['receipt_hash'], (receipt_hash, r['receipt_hash'])
 
-          tampered = json.loads(json.dumps(unsigned))
+          tampered = json.loads(json.dumps(receipt_core))
           tampered['observed']['payload']['message'] = 'TAMPERED'
           tampered_hash = sha(tampered)
           assert tampered_hash != r['receipt_hash']
