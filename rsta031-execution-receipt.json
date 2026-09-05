@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 33977929683,
+    "run_id": 33977949562,
     "job": "executor",
-    "head_commit": "7d11d744136e37f34a7c84b18bad83ffbdca790f",
+    "head_commit": "18b56af63839312b859747a1effb7924b1363950",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-05T16:27:50.225Z"
+    "generated_at": "2026-09-05T16:28:13.503Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "8f0b95664ee209d0a58371bb3a8720a7e809973acc596ffcf8e9054762bcfd35"
+    "body_hash": "37b6e314cc9b8df2400f64f5a9bb7bd004c7cec6cca1f0fb9e77c96c80947da6"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 23,
-    "html_url": "https://github.com/socksninja/-/issues/23"
+    "issue_number": 29,
+    "html_url": "https://github.com/socksninja/-/issues/29"
   },
   "chain": {
     "prior_rsta030_content_address": "5b4e28c3412733db2d6da6cf8b121904782c0db92d9a68bcc98cb3ba9532f3ec",
-    "commitment_hash": "88d924695851582f8aee4e2b0f1b1746695a7e386fdf13334133f36c39eb1734",
-    "request_id": "RSTA-031-REQ-33977929683",
-    "event_id": "RSTA-031-REQ-33977929683:REALITY",
-    "event_hash": "f1ba2d4d1c14159cd0182d1c3aba5b7d5ea1d80ac088f23b6d5b2e44cf2a9b0e"
+    "commitment_hash": "4a7a07ad300bd436d699b81309bf4eb3e84a308cda8d2eca13b1cd6671c4d0e3",
+    "request_id": "RSTA-031-REQ-33977949562",
+    "event_id": "RSTA-031-REQ-33977949562:REALITY",
+    "event_hash": "fb559f14f622c3a7ba6b5d47f16a5492911fa44cc963c61ba5678fba69c36742"
   },
   "verdict": "PASS",
-  "content_address": "9c16028fcc8142657bc3eb195cafd8ae4fdf3f23afcea55ae66490daa6bfed9f"
+  "content_address": "82736b4abb6d2293042b8a5fb12fb5d71d3aa424fbba18e0aa9e66fdbf78aa7d"
 }
