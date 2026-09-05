@@ -1,0 +1,32 @@
+name: RSTA-036 Portable Verifier + Cross-Provider Adapter
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  portability-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute portable verifier and adapters
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node rsta/rsta036-live.mjs
+      - name: Persist RSTA-036 evidence as immutable run-scoped objects
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in rsta036-execution-receipt.json rsta036-final-verdict.json; do
+            body_b64=$(base64 -w 0 "$file")
+            path="rsta-evidence/rsta036/${GITHUB_RUN_ID}-${file}"
+            gh api "repos/${GITHUB_REPOSITORY}/contents/${path}" -X PUT \
+              -f message="rsta: persist RSTA-036 ${file} run ${GITHUB_RUN_ID} [skip ci]" \
+              -f content="$body_b64"
+          done
+          echo "RSTA-036 evidence persisted: ${GITHUB_RUN_ID}"
