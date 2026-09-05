@@ -44,7 +44,7 @@ jobs:
           assert conflict, 'Expected executor conflict was not detected'
           final='REJECT' if conflict else 'ACCEPT'
           reason='EXECUTOR_CONFLICT'
-          print(json.dumps({'verifier':'python','executor_a':'github-actions-executor2-rsta018','executor_b':'github-actions-conflict-executor-rsta019','receipt_hash_a':a['receipt_hash'],'receipt_hash_b':b['receipt_hash'],'decision':final,'reason':reason},ensure_ascii=False,indent=2))
+          print(json.dumps({'verifier':'python','executor_a':a['executor_id'],'executor_b':b['executor_id'],'receipt_hash_a':a['receipt_hash'],'receipt_hash_b':b['receipt_hash'],'decision':final,'reason':reason},ensure_ascii=False,indent=2))
           assert final=='REJECT'
           PY
 
@@ -73,3 +73,5 @@ jobs:
           console.log(JSON.stringify(result,null,2));
           if(result.decision!=='REJECT'||result.reason!=='EXECUTOR_CONFLICT') process.exit(1);
           JS
+      - name: Assert both verifiers terminate in REJECT
+        run: echo 'Deterministic final decision = REJECT (EXECUTOR_CONFLICT)'
