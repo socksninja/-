@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 33980923463,
+    "run_id": 33981336962,
     "job": "executor",
-    "head_commit": "db6df6f6b6997afad8818c0c321eec81b53b7476",
+    "head_commit": "6f6917c7cca642a7d10063138a2b023ee62de9a7",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-05T17:25:52.692Z"
+    "generated_at": "2026-09-05T17:33:53.267Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "407727153dbe6c26992ad47fd93d81867825e2cf595c60364abd96e16d64e269"
+    "body_hash": "2cac1d32dd5a2b365ee6100e8bb37d3f636d69ea19aa6391b8ece4dec0465207"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 252,
-    "html_url": "https://github.com/socksninja/-/issues/252"
+    "issue_number": 264,
+    "html_url": "https://github.com/socksninja/-/issues/264"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "28f5cdf69f1042f722d4ca8adcad66537bdceb79bc0e72a6e1b6314321d5c387",
-    "request_id": "RSTA-031-REQ-33980923463",
-    "event_id": "RSTA-031-REQ-33980923463:REALITY",
-    "event_hash": "8e2dc89d95636bea6d8fc8f5faf4e665d3d8d4e7f6553d3f040eae5c65ba795c"
+    "commitment_hash": "ec85247b99a9676f7926521d97af68aba267a862bf6d8c63dd02c3d3cdea9be4",
+    "request_id": "RSTA-031-REQ-33981336962",
+    "event_id": "RSTA-031-REQ-33981336962:REALITY",
+    "event_hash": "9fd0c7c41c80ad8cf9978e7a64040c740b99ed8cbd112a0f773529c5aaa2d2db"
   },
   "verdict": "PASS",
-  "content_address": "04613a24c59b3d2a3ed4a83a9cb6c064a6a2f9e7760c37989239bd65c1afcb7e"
+  "content_address": "4469e9e0c4df2a9d45d07395f3de687a473fa0fcb66263a988d8ec3700dea351"
 }
