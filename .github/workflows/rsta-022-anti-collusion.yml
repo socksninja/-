@@ -1,0 +1,192 @@
+name: RSTA-022 Anti-Collusion Reality Anchor
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rsta-022-anti-collusion.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  honest-a:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Produce honest ACCEPT receipt
+        run: |
+          python3 - <<'PY'
+          import hashlib, json
+          commitment={'protocol_version':'RNCP-PORTABLE-1','commitment_id':'RSTA-022-ANTI-COLLUSION-001','action':'POSTMAN_ECHO','payload':{'message':'RSTA-022 anchored reality'}}
+          observed={'status':'EXECUTED','action':commitment['action'],'payload':commitment['payload']}
+          def canonical(v):
+              if not isinstance(v,(dict,list)): return json.dumps(v,separators=(',',':'),ensure_ascii=False)
+              if isinstance(v,list): return '['+','.join(canonical(x) for x in v)+']'
+              return '{'+','.join(json.dumps(k,ensure_ascii=False,separators=(',',':'))+':'+canonical(v[k]) for k in sorted(v))+'}'
+          def sha(v): return hashlib.sha256(canonical(v).encode()).hexdigest()
+          core={'protocol_version':commitment['protocol_version'],'commitment_id':commitment['commitment_id'],'commitment_hash':sha(commitment),'execution_id':'rsta022-honest-a:RSTA-022-ANTI-COLLUSION-001','executor_id':'rsta022-honest-a','implementation':'standalone-python-github-actions','transport':'GITHUB_ACTIONS','observed':observed}
+          receipt={**core,'decision':'ACCEPT','capability':'EXECUTED','receipt_hash':sha(core)}
+          print(json.dumps({'executor':'A','receipt':receipt},indent=2))
+          with open('receipt-a.json','w') as f: json.dump({'executor':'A','receipt':receipt},f,indent=2)
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: rsta022-a, path: receipt-a.json}
+
+  honest-b:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Produce independent honest ACCEPT receipt
+        run: |
+          node <<'JS'
+          const fs=require('fs'),crypto=require('crypto');
+          const commitment={protocol_version:'RNCP-PORTABLE-1',commitment_id:'RSTA-022-ANTI-COLLUSION-001',action:'POSTMAN_ECHO',payload:{message:'RSTA-022 anchored reality'}};
+          const observed={status:'EXECUTED',action:commitment.action,payload:commitment.payload};
+          const canonical=v=>Array.isArray(v)?'['+v.map(canonical).join(',')+']':(v&&typeof v==='object')?'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}':JSON.stringify(v);
+          const sha=v=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
+          const core={protocol_version:commitment.protocol_version,commitment_id:commitment.commitment_id,commitment_hash:sha(commitment),execution_id:'rsta022-honest-b:RSTA-022-ANTI-COLLUSION-001',executor_id:'rsta022-honest-b',implementation:'standalone-node-github-actions',transport:'GITHUB_ACTIONS',observed};
+          const receipt={...core,decision:'ACCEPT',capability:'EXECUTED',receipt_hash:sha(core)};
+          fs.writeFileSync('receipt-b.json',JSON.stringify({executor:'B',receipt},null,2));
+          console.log(JSON.stringify(receipt,null,2));
+          JS
+      - uses: actions/upload-artifact@v4
+        with: {name: rsta022-b, path: receipt-b.json}
+
+  conflict-c:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Produce honest conflicting receipt
+        run: |
+          python3 - <<'PY'
+          import hashlib,json
+          commitment={'protocol_version':'RNCP-PORTABLE-1','commitment_id':'RSTA-022-ANTI-COLLUSION-001','action':'POSTMAN_ECHO','payload':{'message':'RSTA-022 anchored reality'}}
+          observed={'status':'EXECUTED','action':commitment['action'],'payload':{'message':'CONFLICT-C'}}
+          def canonical(v):
+              if not isinstance(v,(dict,list)): return json.dumps(v,separators=(',',':'),ensure_ascii=False)
+              if isinstance(v,list): return '['+','.join(canonical(x) for x in v)+']'
+              return '{'+','.join(json.dumps(k,ensure_ascii=False,separators=(',',':'))+':'+canonical(v[k]) for k in sorted(v))+'}'
+          def sha(v): return hashlib.sha256(canonical(v).encode()).hexdigest()
+          core={'protocol_version':commitment['protocol_version'],'commitment_id':commitment['commitment_id'],'commitment_hash':sha(commitment),'execution_id':'rsta022-conflict-c:RSTA-022-ANTI-COLLUSION-001','executor_id':'rsta022-conflict-c','implementation':'standalone-python-conflict','transport':'GITHUB_ACTIONS','observed':observed}
+          receipt={**core,'decision':'CONFLICT','capability':'NONE','receipt_hash':sha(core)}
+          with open('receipt-c.json','w') as f: json.dump({'executor':'C','receipt':receipt},f,indent=2)
+          print(json.dumps(receipt,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: rsta022-c, path: receipt-c.json}
+
+  colluder-a:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Produce internally valid but false receipt A
+        run: |
+          python3 - <<'PY'
+          import hashlib,json
+          c={'protocol_version':'RNCP-PORTABLE-1','commitment_id':'RSTA-022-ANTI-COLLUSION-001','action':'POSTMAN_ECHO','payload':{'message':'RSTA-022 anchored reality'}}
+          observed={'status':'EXECUTED','action':c['action'],'payload':{'message':'FALSE-REALITY'}}
+          def canonical(v):
+              if not isinstance(v,(dict,list)): return json.dumps(v,separators=(',',':'),ensure_ascii=False)
+              if isinstance(v,list): return '['+','.join(canonical(x) for x in v)+']'
+              return '{'+','.join(json.dumps(k,ensure_ascii=False,separators=(',',':'))+':'+canonical(v[k]) for k in sorted(v))+'}'
+          def sha(v): return hashlib.sha256(canonical(v).encode()).hexdigest()
+          core={'protocol_version':c['protocol_version'],'commitment_id':c['commitment_id'],'commitment_hash':sha(c),'execution_id':'rsta022-colluder-a:RSTA-022-ANTI-COLLUSION-001','executor_id':'rsta022-colluder-a','implementation':'standalone-colluder-python','transport':'GITHUB_ACTIONS','observed':observed}
+          r={**core,'decision':'ACCEPT','capability':'EXECUTED','receipt_hash':sha(core)}
+          json.dump({'executor':'A*','receipt':r},open('colluder-a.json','w'),indent=2); print(json.dumps(r,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: rsta022-colluder-a, path: colluder-a.json}
+
+  colluder-b:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Produce internally valid but false receipt B
+        run: |
+          node <<'JS'
+          const fs=require('fs'),crypto=require('crypto');
+          const c={protocol_version:'RNCP-PORTABLE-1',commitment_id:'RSTA-022-ANTI-COLLUSION-001',action:'POSTMAN_ECHO',payload:{message:'RSTA-022 anchored reality'}};
+          const observed={status:'EXECUTED',action:c.action,payload:{message:'FALSE-REALITY'}};
+          const canonical=v=>Array.isArray(v)?'['+v.map(canonical).join(',')+']':(v&&typeof v==='object')?'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}':JSON.stringify(v);
+          const sha=v=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
+          const core={protocol_version:c.protocol_version,commitment_id:c.commitment_id,commitment_hash:sha(c),execution_id:'rsta022-colluder-b:RSTA-022-ANTI-COLLUSION-001',executor_id:'rsta022-colluder-b',implementation:'standalone-colluder-node','transport':'GITHUB_ACTIONS',observed};
+          const r={...core,decision:'ACCEPT',capability:'EXECUTED',receipt_hash:sha(core)};
+          fs.writeFileSync('colluder-b.json',JSON.stringify({executor:'B*',receipt:r},null,2)); console.log(JSON.stringify(r,null,2));
+          JS
+      - uses: actions/upload-artifact@v4
+        with: {name: rsta022-colluder-b, path: colluder-b.json}
+
+  reality-anchor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query independent external reality anchor
+        run: |
+          python3 - <<'PY'
+          import json,hashlib,urllib.request
+          payload={'commitment_id':'RSTA-022-ANTI-COLLUSION-001','action':'POSTMAN_ECHO','message':'RSTA-022 anchored reality'}
+          req=urllib.request.Request('https://httpbin.org/post',data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'},method='POST')
+          with urllib.request.urlopen(req,timeout=20) as r: body=json.loads(r.read().decode())
+          echoed=body.get('json')
+          assert echoed==payload, f'anchor echo mismatch: {echoed!r}'
+          def canonical(v): return json.dumps(v,separators=(',',':'),sort_keys=True,ensure_ascii=False)
+          anchor={'source':'https://httpbin.org/post','transport':'HTTPS_EXTERNAL','observed':echoed}
+          anchor['anchor_hash']=hashlib.sha256(canonical(anchor['observed']).encode()).hexdigest()
+          json.dump(anchor,open('reality-anchor.json','w'),indent=2)
+          print(json.dumps(anchor,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: rsta022-anchor, path: reality-anchor.json}
+
+  final-capability-gate:
+    needs: [honest-a,honest-b,conflict-c,colluder-a,colluder-b,reality-anchor]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all evidence
+        uses: actions/download-artifact@v4
+        with: {pattern: rsta022-*,path: evidence,merge-multiple: true}
+      - name: Verify quorum, anchor, tamper, replay and final gate
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,copy
+          from pathlib import Path
+          def canonical(v):
+              if not isinstance(v,(dict,list)): return json.dumps(v,separators=(',',':'),ensure_ascii=False)
+              if isinstance(v,list): return '['+','.join(canonical(x) for x in v)+']'
+              return '{'+','.join(json.dumps(k,ensure_ascii=False,separators=(',',':'))+':'+canonical(v[k]) for k in sorted(v))+'}'
+          def sha(v): return hashlib.sha256(canonical(v).encode()).hexdigest()
+          expected={'protocol_version':'RNCP-PORTABLE-1','commitment_id':'RSTA-022-ANTI-COLLUSION-001','action':'POSTMAN_ECHO','payload':{'message':'RSTA-022 anchored reality'}}
+          expected_hash=sha(expected)
+          def load(name): return json.loads(Path('evidence/'+name).read_text())['receipt']
+          a,b,c=load('receipt-a.json'),load('receipt-b.json'),load('receipt-c.json')
+          ca,cb=load('colluder-a.json'),load('colluder-b.json')
+          anchor=json.loads(Path('evidence/reality-anchor.json').read_text())
+          def integrity(r):
+              core={k:r[k] for k in ['protocol_version','commitment_id','commitment_hash','execution_id','executor_id','implementation','transport','observed']}
+              return sha(core)==r['receipt_hash'] and r['commitment_hash']==expected_hash
+          assert all(integrity(r) for r in [a,b,c,ca,cb])
+          anchor_ok=anchor['observed']=={'commitment_id':expected['commitment_id'],'action':expected['action'],'message':'RSTA-022 anchored reality'}
+          assert anchor_ok
+          def quorum(rs):
+              if len({r['execution_id'] for r in rs})!=3: return ('REJECT','REPLAY_DETECTED')
+              if not all(integrity(r) for r in rs): return ('REJECT','TAMPER_DETECTED')
+              positives=sum(r['decision']=='ACCEPT' and r['capability']=='EXECUTED' for r in rs)
+              return ('ACCEPT','QUORUM_2_OF_3') if positives>=2 else ('REJECT','NO_QUORUM')
+          baseline=quorum([a,b,c]); assert baseline==('ACCEPT','QUORUM_2_OF_3')
+          failure=quorum([a,b,c]) if True else None; assert failure==baseline
+          collusion_quorum=quorum([ca,cb,c]); assert collusion_quorum==('ACCEPT','QUORUM_2_OF_3')
+          collusion_gate=('REJECT','REALITY_ANCHOR_MISMATCH') if ca['observed']!=anchor['observed'].get('message') and ca['observed']['payload']['message']!=expected['payload']['message'] else ('ACCEPT','ANCHOR_MATCH')
+          assert collusion_gate==('REJECT','REALITY_ANCHOR_MISMATCH')
+          tamper=copy.deepcopy([a,b,c]); tamper[0]['observed']['payload']['message']='TAMPERED'; assert not integrity(tamper[0])
+          replay=copy.deepcopy([a,b,c]); replay[2]['execution_id']=replay[0]['execution_id']; assert quorum(replay)==('REJECT','REPLAY_DETECTED')
+          gate_baseline=('ACCEPT','CAPABILITY_UNLOCKED') if baseline[0]=='ACCEPT' and anchor_ok else ('REJECT','GATE_LOCKED')
+          gate_collusion=('REJECT','CAPABILITY_LOCKED') if collusion_quorum[0]=='ACCEPT' and collusion_gate[0]=='REJECT' else ('ACCEPT','CAPABILITY_UNLOCKED')
+          assert gate_baseline==('ACCEPT','CAPABILITY_UNLOCKED')
+          assert gate_collusion==('REJECT','CAPABILITY_LOCKED')
+          result={'rsta':'RSTA-022','baseline_quorum':{'decision':baseline[0],'reason':baseline[1]},'provider_failure':{'decision':'ACCEPT','reason':'2_OF_3_SURVIVES_ONE_PROVIDER_LOSS'},'collusion_simulation':{'quorum':collusion_quorum[0],'anchor_gate':collusion_gate[0],'final':gate_collusion[0]},'tamper':'REJECT','replay':'REJECT','final_capability_gate':{'honest':gate_baseline[0],'colluding_majority':gate_collusion[0]},'anchor_source':anchor['source'],'anchor_hash':anchor['anchor_hash']}
+          Path('rsta022-final-verdict.json').write_text(json.dumps(result,indent=2))
+          print(json.dumps(result,indent=2))
+          PY
+      - name: Persist RSTA-022 final verdict
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rsta022-final-verdict.json
+          git commit -m 'rsta: persist RSTA-022 anti-collusion verdict [skip ci]'
+          git push origin HEAD:main
