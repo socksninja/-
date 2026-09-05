@@ -1,0 +1,64 @@
+{
+  "commitment": {
+    "protocol": "RNCP-CAUSAL-COMMITMENT-v1",
+    "commitment_id": "RSTA-029-CAUSAL-COMMITMENT-001",
+    "subject_id": "SUBJECT-BUYER-A",
+    "executor_id": "EXECUTOR-B",
+    "action": "EXECUTE_REALITY_BOUND_ACTION",
+    "prerequisites": {
+      "capability_token_id": "9a34a8f5c4f487a3934534dd345992bdae83323395bab8205b4b35c1519d9ccd",
+      "anchor_evidence_hash": "284689cd3d92956bf7593b2f85b5c7bce21d5be395c5ccff5e87f104d2ebf122"
+    },
+    "predecessor_event_hash": null,
+    "state": "ACCEPTED",
+    "commitment_hash": "84fbaacc426b51f7dfe5a34a5c62113540f556fc39f38915e8dffcd484127ad2",
+    "subject_signature": "YWdHaYPQyyGS-TpooL3ytpz3SQ4syCshWm5yFVGfqYQMCP8wZ1G4S1pCh9L4oATW-wrrZ7GI2bqQ5auRhiXoAg",
+    "subject_public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAki+ykxN+F/c3/9aRXmIZ7vVdFxhFWYdblP1ZgIucDzw=\n-----END PUBLIC KEY-----\n"
+  },
+  "execution_receipt": {
+    "protocol": "RNCP-CAUSAL-COMMITMENT-v1",
+    "event_id": "RSTA-029-CAUSAL-COMMITMENT-001:EXECUTED",
+    "commitment_id": "RSTA-029-CAUSAL-COMMITMENT-001",
+    "executor_id": "EXECUTOR-B",
+    "action": "EXECUTE_REALITY_BOUND_ACTION",
+    "result": {
+      "reality_event": "EXECUTOR-B-COMPLETED-ACTION",
+      "resource_state": "COMMITTED_ACTION_APPLIED"
+    },
+    "predecessor_event_hash": null,
+    "commitment_hash": "84fbaacc426b51f7dfe5a34a5c62113540f556fc39f38915e8dffcd484127ad2",
+    "state": "EXECUTED",
+    "event_hash": "6328da60f5819ea7a35b343e4ed549999e0eb05502dfdaaac0fa44acff53a1a0",
+    "executor_signature": "-CdJ4pMDEduLiwnsvgJKxk6mJYm38VuRmLxiCNJTyho4TbqH_XjCyvhkVSmlSkPxcwknvm1m83Z1oGxVuA2MDg",
+    "executor_public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAXqnoixPKYz3k8/MZ/z5PwKYmoXgHB3FUmuY9Bw7txXs=\n-----END PUBLIC KEY-----\n"
+  },
+  "successor_commitment": {
+    "protocol": "RNCP-CAUSAL-COMMITMENT-v1",
+    "commitment_id": "RSTA-029-CAUSAL-COMMITMENT-002",
+    "subject_id": "DOWNSTREAM-SYSTEM-C",
+    "executor_id": "EXECUTOR-D",
+    "action": "PROCESS_FULFILLED_EVENT",
+    "prerequisites": {
+      "capability_token_id": "9a34a8f5c4f487a3934534dd345992bdae83323395bab8205b4b35c1519d9ccd",
+      "anchor_evidence_hash": "284689cd3d92956bf7593b2f85b5c7bce21d5be395c5ccff5e87f104d2ebf122"
+    },
+    "predecessor_event_hash": "6328da60f5819ea7a35b343e4ed549999e0eb05502dfdaaac0fa44acff53a1a0",
+    "state": "ACCEPTED",
+    "commitment_hash": "9e08f71890d8488730d3599a018ace8fc59b9dad16c7bef4b01ef5f2d5a7157a",
+    "subject_signature": "kedn5ZUHqPRN1m1TOTW6AbI4sNBmPIEwLnugr0gZVnSDJlLpyqmRp6BPEAWqSUZKQSDTns8XZrM7z6j1OcilCA",
+    "subject_public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAwgucPtHNusfa8cb7ECRngY3RL+nCCaW+YIQ+pttdgVs=\n-----END PUBLIC KEY-----\n"
+  },
+  "gated_execution": {
+    "protocol": "RNCP-CAUSAL-COMMITMENT-v1",
+    "execution_policy": "NO_VALID_COMMITMENT_NO_EXECUTION",
+    "subject_id": "SUBJECT-BUYER-A",
+    "executor_id": "EXECUTOR-B",
+    "commitment_id": "RSTA-029-CAUSAL-COMMITMENT-001",
+    "commitment_hash": "84fbaacc426b51f7dfe5a34a5c62113540f556fc39f38915e8dffcd484127ad2",
+    "action": "EXECUTE_REALITY_BOUND_ACTION",
+    "prior_capability_token_id": "9a34a8f5c4f487a3934534dd345992bdae83323395bab8205b4b35c1519d9ccd",
+    "anchor_evidence_hash": "284689cd3d92956bf7593b2f85b5c7bce21d5be395c5ccff5e87f104d2ebf122",
+    "execution_event_hash": "6328da60f5819ea7a35b343e4ed549999e0eb05502dfdaaac0fa44acff53a1a0",
+    "state": "EXECUTED"
+  }
+}

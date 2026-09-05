@@ -1,0 +1,39 @@
+{
+  "schema": "RNCP-EXECUTION-RECEIPT-v1",
+  "rsta": "RSTA-029",
+  "execution": {
+    "provider": "github-actions",
+    "workflow": "RSTA-029 Cross-Principal Causal Commitment Protocol",
+    "run_id": 33975443726,
+    "run_attempt": 1,
+    "job": "verify",
+    "head_commit": "137b320005fcd9874dbc7c17cc946375fe343878",
+    "event": "push",
+    "ref": "refs/heads/main",
+    "generated_at": "2026-09-05T15:39:09.049Z"
+  },
+  "assertions": {
+    "no_valid_commitment_no_execution": true,
+    "subject_signature_verified": true,
+    "executor_binding_enforced": true,
+    "forged_commitment_rejected": true,
+    "execution_receipt_verified": true,
+    "tampered_receipt_rejected": true,
+    "causal_successor_requires_predecessor_receipt": true,
+    "causal_ordering_enforced": true
+  },
+  "chain": {
+    "subject": "SUBJECT-BUYER-A",
+    "executor": "EXECUTOR-B",
+    "action": "EXECUTE_REALITY_BOUND_ACTION",
+    "commitment_id": "RSTA-029-CAUSAL-COMMITMENT-001",
+    "commitment_hash": "84fbaacc426b51f7dfe5a34a5c62113540f556fc39f38915e8dffcd484127ad2",
+    "execution_event_id": "RSTA-029-CAUSAL-COMMITMENT-001:EXECUTED",
+    "execution_event_hash": "6328da60f5819ea7a35b343e4ed549999e0eb05502dfdaaac0fa44acff53a1a0",
+    "successor_commitment_id": "RSTA-029-CAUSAL-COMMITMENT-002",
+    "successor_predecessor_event_hash": "6328da60f5819ea7a35b343e4ed549999e0eb05502dfdaaac0fa44acff53a1a0"
+  },
+  "policy": "NO_VALID_COMMITMENT_NO_EXECUTION",
+  "verdict": "PASS",
+  "content_address": "ccb5af0ba8d456e0bad6239bd3e4de279379b64bfe08e5ad6e0000482c4393f4"
+}
