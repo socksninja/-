@@ -20,20 +20,20 @@
     "protocol": "RNCP-EXECUTOR-IDENTITY-v1",
     "executor_id": "EXTERNAL-GITHUB-EXECUTOR",
     "issuer": "https://token.actions.githubusercontent.com",
-    "token_hash": "6616408f46ab2a035a51d63a77dbd5f1fc92366b0b70daca6f52c083faa79907",
-    "claims_hash": "94514ec1e5ee14d7ed0ad4ec9aeea558056ca0dbf713f469d63444558cbe94be",
+    "token_hash": "6860f44269b81dec484ee9740edc43c6f401548dfbb369275a1816f09a244ea9",
+    "claims_hash": "5296271d4165b28e3607002a699e06adb4ae235048b029f7f3898ab26b100f63",
     "claims": {
       "sub": "repo:socksninja/-:ref:refs/heads/main",
       "aud": "rsta-032",
       "repository": "socksninja/-",
       "repository_id": "1087941782",
       "workflow_ref": "socksninja/-/.github/workflows/rsta-032-executor-identity.yml@refs/heads/main",
-      "workflow_sha": "589382bdb938814d705bdf876f5866e9fa1fc0b8",
+      "workflow_sha": "67e9f676daf2381cd657fa5c45983eab979671fd",
       "ref": "refs/heads/main",
       "ref_type": "branch",
       "event_name": "push",
-      "run_id": "33978556828",
-      "check_run_id": "101339503758",
+      "run_id": "33978587278",
+      "check_run_id": "101339672545",
       "runner_environment": "github-hosted"
     }
   },
@@ -42,16 +42,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 61,
-    "html_url": "https://github.com/socksninja/-/issues/61"
+    "issue_number": 73,
+    "html_url": "https://github.com/socksninja/-/issues/73"
   },
   "chain": {
-    "prior_rsta031_content_address": "74cf3985ed13824dcc0eafa1aab54e702d197d3e7f098cc9af033eab7a32f676",
-    "commitment_hash": "06540b279e2c3a9078d471d5918c4acaa8f9b863f6810725231e0cca814075a9",
-    "request_id": "RSTA-032-REQ-33978556828",
-    "event_id": "RSTA-032-REQ-33978556828:REALITY",
-    "event_hash": "5f12c327154004d3295e6bb51b2554fd3b964cdc1f24ac1b518efccd709bcb24",
-    "executor_attestation_hash": "3db2a0b5c116cb2cfbac91c5e56afb1d0ad9239c3abcde5db8e7ef0399c0d432"
+    "prior_rsta031_content_address": "da343165208cbaf48b864edc90761c6194e2e5ca18491f44c23f40ecb49aaaaa",
+    "commitment_hash": "3eb26c5bab5d15a68a947d2847065ac6c782b5e363cfc761b2089e38bbbf242c",
+    "request_id": "RSTA-032-REQ-33978587278",
+    "event_id": "RSTA-032-REQ-33978587278:REALITY",
+    "event_hash": "8dafa207ba83b2f0455fe6ae95e5243c6276ced9c51cf2c888f697e205046083",
+    "executor_attestation_hash": "25ac197393c9afa795bb249c183efe1095d0315daf9bfe52c8c77d7ae278a54e"
   },
   "guarantees": {
     "commitment_verified": true,
