@@ -12,14 +12,16 @@ on:
 permissions:
   contents: read
 
-# Final RSTA-018 audit run: durable shared state is the only input.
-
+# Audit an immutable commit snapshot, never a moving branch head.
 jobs:
   python-verifier:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout evidence
+      - name: Checkout exact triggering commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
       - name: Verify both receipts and conflict rejection in Python
         run: |
           python3 - <<'PY'
@@ -35,7 +37,8 @@ jobs:
           def projection(r): return {'protocol_version':r['protocol_version'],'commitment_id':r['commitment_id'],'action':r.get('action',r['observed']['action']),'payload':r.get('payload',r['observed']['payload']),'commitment_hash':r['commitment_hash'],'observed':r['observed']}
           for r in (a,b):
               assert r['decision'] == 'ACCEPT' and r['capability'] == 'EXECUTED'
-              p=projection(r); assert sha({k:p[k] for k in ['protocol_version','commitment_id','action','payload']}) == r['commitment_hash']
+              p=projection(r)
+              assert sha({k:p[k] for k in ['protocol_version','commitment_id','action','payload']}) == r['commitment_hash']
               core={k:r[k] for k in ['protocol_version','commitment_id','commitment_hash','execution_id','executor_id','implementation','executor_repository','executor_revision','transport','observed']}
               assert sha(core) == r['receipt_hash']
           assert projection(a) == projection(b)
@@ -50,8 +53,11 @@ jobs:
   node-verifier:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout evidence
+      - name: Checkout exact triggering commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
       - name: Verify both receipts and conflict rejection in Node
         run: |
           node <<'NODE'
