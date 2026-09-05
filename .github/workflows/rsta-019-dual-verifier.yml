@@ -1,0 +1,75 @@
+name: RSTA-019 Dual Verifier
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'rsta/rsta019-conflict-receipt.json'
+      - 'rsta/rsta018-executor2-live-receipt.json'
+      - '.github/workflows/rsta-019-dual-verifier.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact triggering commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify conflict and deterministic rejection in Python
+        run: |
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          def canonical(v):
+              if not isinstance(v,(dict,list)): return json.dumps(v,separators=(',',':'),ensure_ascii=False)
+              if isinstance(v,list): return '['+','.join(canonical(x) for x in v)+']'
+              return '{'+','.join(json.dumps(k,ensure_ascii=False,separators=(',',':'))+':'+canonical(v[k]) for k in sorted(v))+'}'
+          def sha(v): return hashlib.sha256(canonical(v).encode()).hexdigest()
+          a=json.loads(Path('rsta/rsta018-executor2-live-receipt.json').read_text())['receipt']
+          b=json.loads(Path('rsta/rsta019-conflict-receipt.json').read_text())['receipt']
+          expected={'protocol_version':'RNCP-PORTABLE-1','commitment_id':'RSTA-016-PORTABLE-001','action':'POSTMAN_ECHO','payload':{'message':'RSTA-016 external execution'}}
+          expected_hash=sha(expected)
+          def verify(r):
+              core={k:r[k] for k in ['protocol_version','commitment_id','commitment_hash','execution_id','executor_id','implementation','executor_repository','executor_revision','transport','observed']}
+              return sha(core)==r['receipt_hash'] and r['commitment_hash']==expected_hash and r['decision']=='ACCEPT' and r['capability']=='EXECUTED'
+          assert verify(a), 'Executor A receipt integrity/commitment verification failed'
+          assert verify(b), 'Executor B receipt integrity/commitment verification failed'
+          aobs=a['observed']; bobs=b['observed']
+          conflict=(aobs!=bobs) or (bobs.get('payload')!=expected['payload']) or (aobs.get('payload')!=expected['payload'])
+          assert conflict, 'Expected executor conflict was not detected'
+          final='REJECT' if conflict else 'ACCEPT'
+          reason='EXECUTOR_CONFLICT'
+          print(json.dumps({'verifier':'python','executor_a':'github-actions-executor2-rsta018','executor_b':'github-actions-conflict-executor-rsta019','receipt_hash_a':a['receipt_hash'],'receipt_hash_b':b['receipt_hash'],'decision':final,'reason':reason},ensure_ascii=False,indent=2))
+          assert final=='REJECT'
+          PY
+
+  node-verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact triggering commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify conflict and deterministic rejection in Node
+        run: |
+          node <<'JS'
+          const fs=require('fs'), crypto=require('crypto');
+          const canonical=v=>Array.isArray(v)?'['+v.map(canonical).join(',')+']':(v&&typeof v==='object')?'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}':JSON.stringify(v);
+          const sha=v=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
+          const a=JSON.parse(fs.readFileSync('rsta/rsta018-executor2-live-receipt.json')).receipt;
+          const b=JSON.parse(fs.readFileSync('rsta/rsta019-conflict-receipt.json')).receipt;
+          const expected={protocol_version:'RNCP-PORTABLE-1',commitment_id:'RSTA-016-PORTABLE-001',action:'POSTMAN_ECHO',payload:{message:'RSTA-016 external execution'}};
+          const expectedHash=sha(expected);
+          function verify(r){const core={}; for(const k of ['protocol_version','commitment_id','commitment_hash','execution_id','executor_id','implementation','executor_repository','executor_revision','transport','observed']) core[k]=r[k]; return sha(core)===r.receipt_hash && r.commitment_hash===expectedHash && r.decision==='ACCEPT' && r.capability==='EXECUTED';}
+          if(!verify(a)||!verify(b)) throw new Error('receipt verification failed');
+          const conflict=JSON.stringify(a.observed)!==JSON.stringify(b.observed) || JSON.stringify(b.observed.payload)!==JSON.stringify(expected.payload) || JSON.stringify(a.observed.payload)!==JSON.stringify(expected.payload);
+          if(!conflict) throw new Error('expected conflict not detected');
+          const result={verifier:'node','executor_a':a.executor_id,'executor_b':b.executor_id,'receipt_hash_a':a.receipt_hash,'receipt_hash_b':b.receipt_hash,decision:'REJECT',reason:'EXECUTOR_CONFLICT'};
+          console.log(JSON.stringify(result,null,2));
+          if(result.decision!=='REJECT'||result.reason!=='EXECUTOR_CONFLICT') process.exit(1);
+          JS
