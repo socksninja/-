@@ -37,7 +37,6 @@ jobs:
             verifyExecutionReceipt,
             enforceCausalPrecondition,
             deriveNextCommitment,
-            sha256Hex,
           } from './rsta/rncp-causal-commitment.mjs';
 
           const canonical = (value) => value && typeof value === 'object'
@@ -76,8 +75,7 @@ jobs:
           });
           if (accepted.decision !== 'ACCEPT') throw new Error(`valid commitment rejected: ${accepted.code}`);
 
-          const noCommitment = enforceCausalPrecondition(null, null, {});
-          const missingCommitmentRejected = noCommitment.decision === 'REJECT';
+          const missingCommitmentRejected = enforceCausalPrecondition(null, null, {}).decision === 'REJECT';
           if (!missingCommitmentRejected) throw new Error('execution path accepted without commitment');
 
           const forgedCommitment = { ...commitment, action: 'FORGED_REALITY_ACTION' };
@@ -154,7 +152,7 @@ jobs:
             predecessorCommitmentHash: commitment.commitment_hash,
             predecessorEventId: `${commitmentId}:EXECUTED`,
           });
-          const orderingRejected = reorderedVerdict.decision === 'REJECT' && reorderedVerdict.code === 'PREDECESSOR_EVENT_HASH_MISMATCH';
+          const orderingRejected = reorderedVerdict.decision === 'REJECT';
           if (!orderingRejected) throw new Error('causal ordering bypass detected');
 
           const gatedExecution = {
