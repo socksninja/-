@@ -1,0 +1,41 @@
+{
+  "schema": "RNCP-EXECUTION-RECEIPT-v1",
+  "rsta": "RSTA-027",
+  "execution": {
+    "provider": "github-actions",
+    "workflow": "RSTA-027 External Fact Linked Verified Anchor",
+    "run_id": 33974135542,
+    "run_attempt": 1,
+    "job": "verify",
+    "head_commit": "7ecb3ecfd82adae520f897f326558d3d01a77e72",
+    "event": "push",
+    "ref": "refs/heads/main",
+    "generated_at": "2026-09-05T15:13:36.685Z"
+  },
+  "assertions": {
+    "github_actions_execution": "OBSERVED",
+    "fresh_drand": true,
+    "bls_pass": true,
+    "anchor_hash": "9d059896db2f9024febd6679a431d0c23e3f84079a7ee866b15f5451ec76e2b6",
+    "tamper_reject": true,
+    "replay_reject": true,
+    "capability_unlocked": true
+  },
+  "anchor": {
+    "type": "RNCP-VERIFIED-ANCHOR",
+    "version": "RNCP-VERIFIED-ANCHOR-v1",
+    "proof": "2f621b60b277e1788f191746a97cf61fd6e6c5010bb9f0b35d6a48dff0859274",
+    "evidence_hash": "9d059896db2f9024febd6679a431d0c23e3f84079a7ee866b15f5451ec76e2b6",
+    "status": "VERIFIED_EXTERNAL_FACT"
+  },
+  "external_fact": {
+    "source": "drand-League-of-Entropy-default",
+    "chain": "8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce",
+    "round": 6439673,
+    "randomness": "bd0fe4f68129cc5d37277b624401386bc4792abfb8797220b13932e33567f05b",
+    "signature": "846e585992f51c8e3d4915d31d3e28249f9a4d658187d343c6a99dbf99cdc85ed5c84b49ad7a05e64602b2dfe535fb57164899ed5ce62a50a82836360de31f7a64f148fecd9ae06e1e15c7881e0d97153108051f229d381ea1fe6baff58aceac",
+    "relay_count": 3
+  },
+  "verdict": "PASS",
+  "content_address": "209b52ead96115fce9ffc79632c936a6638e10f78a851b5596e5049899d29a54"
+}

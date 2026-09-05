@@ -4,9 +4,9 @@
   "external_fact": {
     "source": "drand-League-of-Entropy-default",
     "chain": "8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce",
-    "round": 6439659,
-    "randomness": "960dd9ee5dc3bf2b1d903d39ea4c907866df47cfc6125c278ad9ddc25d6aa963",
-    "signature": "ad99fa2c9eaec80cc22858bede6b4fdead9461d5a3f6389f01c27613a5d7dbfbe0be9a5d6778a6f98dd6417e88cf17f1178831a89214dc6c5ef79b0a9b496880cd2d459bfb494f28e5e5c35be20aa5a48e1db7edd0504b1781f32cbcc729227a",
+    "round": 6439673,
+    "randomness": "bd0fe4f68129cc5d37277b624401386bc4792abfb8797220b13932e33567f05b",
+    "signature": "846e585992f51c8e3d4915d31d3e28249f9a4d658187d343c6a99dbf99cdc85ed5c84b49ad7a05e64602b2dfe535fb57164899ed5ce62a50a82836360de31f7a64f148fecd9ae06e1e15c7881e0d97153108051f229d381ea1fe6baff58aceac",
     "relay_count": 3
   },
   "verification": {
@@ -18,8 +18,8 @@
   "anchor": {
     "type": "RNCP-VERIFIED-ANCHOR",
     "version": "RNCP-VERIFIED-ANCHOR-v1",
-    "proof": "1c29535e6d99c9a6524fdd8f10ec947c17458c9cc5b2c5b5c7e554d41346b3d0",
-    "evidence_hash": "4d3640065a261d8f5991b8f6b884b26c09e9ca61d327309a4108d61945ce6123",
+    "proof": "2f621b60b277e1788f191746a97cf61fd6e6c5010bb9f0b35d6a48dff0859274",
+    "evidence_hash": "9d059896db2f9024febd6679a431d0c23e3f84079a7ee866b15f5451ec76e2b6",
     "status": "VERIFIED_EXTERNAL_FACT"
   },
   "adversarial_controls": {
@@ -32,5 +32,5 @@
     "reason": "FRESH_BLS_VERIFIED_EXTERNAL_FACT_BOUND_TO_ANCHOR"
   },
   "claim_boundary": "The external fact source is an additional trust boundary; this does not turn a generic 2-of-3 quorum into Byzantine consensus.",
-  "evidence_hash": "fa83536b4d35d9df1b35f3e7b9ffed5008414cc43badcf189da57d4513cb5de5"
+  "evidence_hash": "4786b154ff39c5c88225e2b851737d702f035fddf3968173e7046bdf9cb63b57"
 }
