@@ -16,16 +16,14 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Build signed RNCP subject intent
         shell: bash
         run: |
           set -euo pipefail
           node > subject-intent.json <<'JS'
           import fs from 'node:fs';
-          import { createPrincipal, createCommitment } from '../../rsta/rncp-causal-commitment.mjs';
+          import { createPrincipal, createCommitment } from './rsta/rncp-causal-commitment.mjs';
           const prior = JSON.parse(fs.readFileSync('rsta029-execution-receipt.json','utf8'));
           if (prior.verdict !== 'PASS') throw new Error('RSTA-029 prerequisite is not PASS');
           const subject = createPrincipal('SUBJECT-RSTA-030-HARD');
@@ -37,7 +35,7 @@ jobs:
             prerequisites:[],
             predecessorEventHash:prior.chain.event_hash
           });
-          const intent = {
+          console.log(JSON.stringify({
             protocol:'RNCP-RSTA-030-HARD-BOUNDARY-v1',
             created_by:'subject-job',
             subject_public_key_pem:subject.publicKeyPem,
@@ -47,40 +45,23 @@ jobs:
             expected_action:'CREATE_GITHUB_ISSUE',
             expected_executor_id:'EXTERNAL-GITHUB-EXECUTOR',
             prior_receipt_content_address:prior.content_address
-          };
-          // The secret is intentionally ephemeral and remains only inside this workflow run.
-          console.log(JSON.stringify(intent,null,2));
+          },null,2));
           JS
-
       - name: Attempt direct external write without Executor authority
-        id: bypass
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
+        env: { GH_TOKEN: '${{ github.token }}' }
         run: |
           set -euo pipefail
           body='{"title":"RSTA-030 HARD BYPASS PROBE","body":"This request must be denied by the external authority boundary."}'
-          code=$(curl -sS -o /tmp/direct-api.json -w '%{http_code}' \
-            -X POST \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H 'Accept: application/vnd.github+json' \
+          code=$(curl -sS -o /tmp/direct-api.json -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' \
             -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues" \
-            -d "$body")
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues" -d "$body")
           echo "direct_external_write_http_status=${code}"
           cat /tmp/direct-api.json
           test "$code" = "403"
-          echo "DIRECT_BYPASS_DENIED=true" > bypass-evidence.env
-
-      - name: Package signed intent and bypass evidence
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat bypass-evidence.env
-          echo '{"direct_external_write_http_status":403,"direct_bypass_denied":true}' > bypass-evidence.json
-
-      - name: Upload subject boundary evidence
-        uses: actions/upload-artifact@v4
+          printf '%s\n' '{"direct_external_write_http_status":403,"direct_bypass_denied":true}' > bypass-evidence.json
+      - uses: actions/upload-artifact@v4
         with:
           name: rsta030-subject-evidence
           path: |
@@ -94,19 +75,12 @@ jobs:
       contents: write
       issues: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download subject evidence
-        uses: actions/download-artifact@v4
-        with:
-          name: rsta030-subject-evidence
-          path: subject-evidence
-
-      - name: Execute only through RNCP-bound external executor
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: rsta030-subject-evidence, path: subject-evidence }
+      - name: Execute through RNCP-bound external executor
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
+        env: { GH_TOKEN: '${{ github.token }}' }
         run: |
           set -euo pipefail
           node <<'JS'
@@ -114,160 +88,57 @@ jobs:
           import crypto from 'node:crypto';
           import https from 'node:https';
           import { verifyCommitment } from './rsta/rncp-causal-commitment.mjs';
-          import {
-            createExecutorIdentity,
-            createExecutionRequest,
-            verifyExecutionRequest,
-            createRealityReceipt,
-            verifyRealityReceipt,
-          } from './rsta/rsta030-external-executor.mjs';
-
+          import { createExecutorIdentity, createExecutionRequest, verifyExecutionRequest, createRealityReceipt, verifyRealityReceipt } from './rsta/rsta030-external-executor.mjs';
           const canonical=(v)=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'):JSON.stringify(v);
           const hash=(v)=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
           const intent=JSON.parse(fs.readFileSync('subject-evidence/subject-intent.json','utf8'));
           const bypass=JSON.parse(fs.readFileSync('subject-evidence/bypass-evidence.json','utf8'));
           if (bypass.direct_external_write_http_status !== 403 || bypass.direct_bypass_denied !== true) throw new Error('hard bypass proof missing');
-
           const executor=createExecutorIdentity('EXTERNAL-GITHUB-EXECUTOR');
           const commitment=intent.commitment;
           const expectedAction=intent.expected_action;
           const expectedExecutor=intent.expected_executor_id;
-          const commitmentCheck=verifyCommitment(commitment, {
-            subjectPublicKeyPem:intent.subject_public_key_pem,
-            expectedExecutorId:expectedExecutor,
-            expectedAction,
-          });
-          if (commitmentCheck.decision !== 'ACCEPT') throw new Error(`commitment rejected: ${commitmentCheck.code}`);
-
-          const request=createExecutionRequest({
-            executor,
-            requestId:`RSTA-030-HARD-REQ-${process.env.GITHUB_RUN_ID}`,
-            commitmentHash:commitment.commitment_hash,
-            action:expectedAction,
-            method:'POST',
-            path:intent.target.path,
-            body:{title:`RSTA-030 HARD REALITY ${process.env.GITHUB_RUN_ID}`,body:'Created only after RNCP commitment verification by the isolated external executor.'},
-            capabilityTokenId:'RSTA-029-CAUSAL-PREREQUISITE'
-          });
-          const requestCheck=verifyExecutionRequest(request, {
-            executorPublicKeyPem:executor.publicKeyPem,
-            expectedExecutorId:expectedExecutor,
-            expectedCommitmentHash:commitment.commitment_hash,
-            expectedAction,
-            expectedMethod:'POST',
-            expectedPath:intent.target.path,
-            expectedCapabilityTokenId:'RSTA-029-CAUSAL-PREREQUISITE'
-          });
-          if (requestCheck.decision !== 'ACCEPT') throw new Error(`execution request rejected: ${requestCheck.code}`);
-
-          const apiResult=await new Promise((resolve,reject)=>{
-            const payload=JSON.stringify(request.body);
-            const req=https.request({
-              hostname:'api.github.com',
-              path:intent.target.path,
-              method:'POST',
-              headers:{
-                'Authorization':`Bearer ${process.env.GH_TOKEN}`,
-                'Accept':'application/vnd.github+json',
-                'X-GitHub-Api-Version':'2022-11-28',
-                'User-Agent':'rsta-030-hard-boundary',
-                'Content-Type':'application/json',
-                'Content-Length':Buffer.byteLength(payload)
-              }
-            },res=>{let data='';res.on('data',c=>data+=c);res.on('end',()=>resolve({status:res.statusCode,body:data}));});
-            req.on('error',reject); req.write(payload); req.end();
-          });
-          if (apiResult.status !== 201) throw new Error(`real GitHub action failed: ${apiResult.status} ${apiResult.body}`);
-          const created=JSON.parse(apiResult.body);
-          if (!Number.isInteger(created.number) || !created.html_url) throw new Error('GitHub response missing issue identity');
-
+          const commitmentCheck=verifyCommitment(commitment,{subjectPublicKeyPem:intent.subject_public_key_pem,expectedExecutorId:expectedExecutor,expectedAction});
+          if(commitmentCheck.decision!=='ACCEPT') throw new Error(`commitment rejected: ${commitmentCheck.code}`);
+          const request=createExecutionRequest({executor,requestId:`RSTA-030-HARD-REQ-${process.env.GITHUB_RUN_ID}`,commitmentHash:commitment.commitment_hash,action:expectedAction,method:'POST',path:intent.target.path,body:{title:`RSTA-030 HARD REALITY ${process.env.GITHUB_RUN_ID}`,body:'Created only after RNCP commitment verification by the isolated external executor.'},capabilityTokenId:'RSTA-029-CAUSAL-PREREQUISITE'});
+          const requestCheck=verifyExecutionRequest(request,{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:expectedExecutor,expectedCommitmentHash:commitment.commitment_hash,expectedAction,expectedMethod:'POST',expectedPath:intent.target.path,expectedCapabilityTokenId:'RSTA-029-CAUSAL-PREREQUISITE'});
+          if(requestCheck.decision!=='ACCEPT') throw new Error(`execution request rejected: ${requestCheck.code}`);
+          const apiResult=await new Promise((resolve,reject)=>{const payload=JSON.stringify(request.body);const req=https.request({hostname:'api.github.com',path:intent.target.path,method:'POST',headers:{'Authorization':`Bearer ${process.env.GH_TOKEN}`,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'rsta-030-hard-boundary','Content-Type':'application/json','Content-Length':Buffer.byteLength(payload)}},res=>{let data='';res.on('data',c=>data+=c);res.on('end',()=>resolve({status:res.statusCode,body:data}));});req.on('error',reject);req.write(payload);req.end();});
+          if(apiResult.status!==201) throw new Error(`real GitHub action failed: ${apiResult.status} ${apiResult.body}`);
+          const created=JSON.parse(apiResult.body); if(!Number.isInteger(created.number)||!created.html_url) throw new Error('GitHub response missing issue identity');
           const realityReceipt=createRealityReceipt({executor,request,http:{status:apiResult.status,body:apiResult.body},responseBody:created});
-          const realityCheck=verifyRealityReceipt(realityReceipt, {
-            executorPublicKeyPem:executor.publicKeyPem,
-            expectedExecutorId:executor.id,
-            expectedCommitmentHash:commitment.commitment_hash,
-            expectedRequestId:request.request_id,
-            expectedStatus:201
-          });
-          if (realityCheck.decision !== 'ACCEPT') throw new Error(`reality receipt rejected: ${realityCheck.code}`);
-
-          const forged={...request,action:'DELETE_GITHUB_ISSUE'};
-          const forgedCheck=verifyExecutionRequest(forged, {
-            executorPublicKeyPem:executor.publicKeyPem,
-            expectedExecutorId:expectedExecutor,
-            expectedCommitmentHash:commitment.commitment_hash,
-            expectedAction,
-            expectedMethod:'POST',
-            expectedPath:intent.target.path,
-            expectedCapabilityTokenId:'RSTA-029-CAUSAL-PREREQUISITE'
-          });
-          if (forgedCheck.decision !== 'REJECT') throw new Error('forged action accepted');
-
-          const forgedPath={...request,path:`/repos/${process.env.GITHUB_REPOSITORY}/issues/999999999`};
-          const forgedPathCheck=verifyExecutionRequest(forgedPath, {
-            executorPublicKeyPem:executor.publicKeyPem,
-            expectedExecutorId:expectedExecutor,
-            expectedCommitmentHash:commitment.commitment_hash,
-            expectedAction,
-            expectedMethod:'POST',
-            expectedPath:intent.target.path,
-            expectedCapabilityTokenId:'RSTA-029-CAUSAL-PREREQUISITE'
-          });
-          if (forgedPathCheck.decision !== 'REJECT') throw new Error('forged path accepted');
-
+          const realityCheck=verifyRealityReceipt(realityReceipt,{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:executor.id,expectedCommitmentHash:commitment.commitment_hash,expectedRequestId:request.request_id,expectedStatus:201});
+          if(realityCheck.decision!=='ACCEPT') throw new Error(`reality receipt rejected: ${realityCheck.code}`);
+          const forgedCheck=verifyExecutionRequest({...request,action:'DELETE_GITHUB_ISSUE'},{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:expectedExecutor,expectedCommitmentHash:commitment.commitment_hash,expectedAction,expectedMethod:'POST',expectedPath:intent.target.path,expectedCapabilityTokenId:'RSTA-029-CAUSAL-PREREQUISITE'});
+          if(forgedCheck.decision!=='REJECT') throw new Error('forged action accepted');
+          const forgedPathCheck=verifyExecutionRequest({...request,path:`/repos/${process.env.GITHUB_REPOSITORY}/issues/999999999`},{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:expectedExecutor,expectedCommitmentHash:commitment.commitment_hash,expectedAction,expectedMethod:'POST',expectedPath:intent.target.path,expectedCapabilityTokenId:'RSTA-029-CAUSAL-PREREQUISITE'});
+          if(forgedPathCheck.decision!=='REJECT') throw new Error('forged path accepted');
           const tampered={...realityReceipt,external_observation:{...realityReceipt.external_observation,response_hash:hash('FORGED-EXTERNAL-RESPONSE')}};
-          const tamperCheck=verifyRealityReceipt(tampered, {
-            executorPublicKeyPem:executor.publicKeyPem,
-            expectedExecutorId:executor.id,
-            expectedCommitmentHash:commitment.commitment_hash,
-            expectedRequestId:request.request_id,
-            expectedStatus:201
-          });
-          if (tamperCheck.decision !== 'REJECT') throw new Error('tampered reality receipt accepted');
-
-          const verdict={
-            rsta:'RSTA-030',status:'PASS',protocol:'RNCP-EXTERNAL-AUTHORITY-BOUNDARY-v1',
-            hard_boundary:{subject_job_external_write_http_status:bypass.direct_external_write_http_status,subject_direct_bypass_denied:bypass.direct_bypass_denied,external_executor_authority:'GitHub Actions job with issues:write',subject_authority:'GitHub Actions job without issues:write'},
-            external_action:{system:'GitHub REST API',method:'POST',path:intent.target.path,status:apiResult.status,issue_number:created.number,html_url:created.html_url},
-            chain:{prior_rsta29_content_address:intent.prior_receipt_content_address,commitment_hash:commitment.commitment_hash,request_id:request.request_id,event_id:realityReceipt.event_id,event_hash:realityReceipt.event_hash},
-            guarantees:{commitment_verified:true,request_signature_verified:true,real_external_api_action:true,external_reality_receipt_verified:true,direct_bypass_denied:true,forged_action_denied:true,forged_path_denied:true,tampered_reality_receipt_denied:true},
-            claim_boundary:'RNCP enforcement is proven at this integrated external execution boundary. Arbitrary third-party infrastructure is not automatically compelled; it must delegate the protected action to an RNCP-enforcing boundary that owns the external credential.'
-          };
-          const receipt={schema:'RNCP-EXECUTION-RECEIPT-v1',rsta:'RSTA-030',execution:{provider:'github-actions',workflow:process.env.GITHUB_WORKFLOW,run_id:Number(process.env.GITHUB_RUN_ID),run_attempt:Number(process.env.GITHUB_RUN_ATTEMPT),job:'external_executor',head_commit:process.env.GITHUB_SHA,event:process.env.GITHUB_EVENT_NAME,ref:process.env.GITHUB_REF,generated_at:new Date().toISOString()},assertions:verdict.guarantees,chain:verdict.chain,external_action:verdict.external_action,hard_boundary:verdict.hard_boundary,policy:'NO_VALID_COMMITMENT_NO_EXTERNAL_WRITE',verdict:'PASS'};
-          receipt.content_address=hash(receipt);
-
-          // Cleanup the real external resource after the receipt has captured the 201 response.
-          await new Promise((resolve,reject)=>{
-            const req=https.request({hostname:'api.github.com',path:`/repos/${process.env.GITHUB_REPOSITORY}/issues/${created.number}`,method:'PATCH',headers:{'Authorization':`Bearer ${process.env.GH_TOKEN}`,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'rsta-030-hard-boundary','Content-Type':'application/json'}},res=>{res.resume();res.on('end',()=>resolve());});
-            req.on('error',reject); req.write(JSON.stringify({state:'closed'})); req.end();
-          });
-
+          const tamperCheck=verifyRealityReceipt(tampered,{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:executor.id,expectedCommitmentHash:commitment.commitment_hash,expectedRequestId:request.request_id,expectedStatus:201});
+          if(tamperCheck.decision!=='REJECT') throw new Error('tampered reality receipt accepted');
+          const external_action={system:'GitHub REST API',method:'POST',path:intent.target.path,status:apiResult.status,issue_number:created.number,html_url:created.html_url};
+          const guarantees={commitment_verified:true,request_signature_verified:true,real_external_api_action:true,external_reality_receipt_verified:true,direct_bypass_denied:true,forged_action_denied:true,forged_path_denied:true,tampered_reality_receipt_denied:true};
+          const verdict={rsta:'RSTA-030',status:'PASS',protocol:'RNCP-EXTERNAL-AUTHORITY-BOUNDARY-v1',hard_boundary:{subject_job_external_write_http_status:bypass.direct_external_write_http_status,subject_direct_bypass_denied:bypass.direct_bypass_denied,external_executor_authority:'GitHub Actions job with issues:write',subject_authority:'GitHub Actions job without issues:write'},external_action,chain:{commitment_hash:commitment.commitment_hash,request_id:request.request_id,event_id:realityReceipt.event_id,event_hash:realityReceipt.event_hash},guarantees,claim_boundary:'RNCP enforcement is proven at this integrated external execution boundary. Arbitrary third-party infrastructure is not automatically compelled; it must delegate the protected action to an RNCP-enforcing boundary that owns the external credential.'};
+          const receipt={schema:'RNCP-EXECUTION-RECEIPT-v1',rsta:'RSTA-030',execution:{provider:'github-actions',workflow:process.env.GITHUB_WORKFLOW,run_id:Number(process.env.GITHUB_RUN_ID),run_attempt:Number(process.env.GITHUB_RUN_ATTEMPT),job:'external_executor',head_commit:process.env.GITHUB_SHA,event:process.env.GITHUB_EVENT_NAME,ref:process.env.GITHUB_REF,generated_at:new Date().toISOString()},assertions:guarantees,chain:verdict.chain,external_action,hard_boundary:verdict.hard_boundary,policy:'NO_VALID_COMMITMENT_NO_EXTERNAL_WRITE',verdict:'PASS'}; receipt.content_address=hash(receipt);
+          await new Promise((resolve,reject)=>{const req=https.request({hostname:'api.github.com',path:`/repos/${process.env.GITHUB_REPOSITORY}/issues/${created.number}`,method:'PATCH',headers:{'Authorization':`Bearer ${process.env.GH_TOKEN}`,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'rsta-030-hard-boundary','Content-Type':'application/json'}},res=>{res.resume();res.on('end',resolve)});req.on('error',reject);req.write(JSON.stringify({state:'closed'}));req.end();});
           fs.writeFileSync('rsta030-final-verdict.json',JSON.stringify(verdict,null,2));
           fs.writeFileSync('rsta030-external-receipt.json',JSON.stringify(realityReceipt,null,2));
           fs.writeFileSync('rsta030-execution-receipt.json',JSON.stringify(receipt,null,2));
-          console.log(JSON.stringify(verdict,null,2));
           JS
-
-      - name: Recompute and verify persisted receipt
-        shell: bash
+      - name: Recompute persisted receipt
         run: |
-          set -euo pipefail
           node <<'JS'
           import fs from 'node:fs'; import crypto from 'node:crypto';
           const canonical=(v)=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'):JSON.stringify(v);
           const hash=(v)=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
           const r=JSON.parse(fs.readFileSync('rsta030-execution-receipt.json','utf8')); const stored=r.content_address; const c=structuredClone(r); delete c.content_address;
-          if(stored!==hash(c)) throw new Error('receipt content address mismatch');
-          for(const [k,v] of Object.entries(r.assertions)) if(v!==true) throw new Error(`assertion failed: ${k}`);
-          console.log(JSON.stringify({receipt_verified:true,content_address:stored,assertions:r.assertions},null,2));
+          if(stored!==hash(c)) throw new Error('receipt content address mismatch'); for(const [k,v] of Object.entries(r.assertions)) if(v!==true) throw new Error(`assertion failed: ${k}`); console.log(JSON.stringify({receipt_verified:true,content_address:stored,assertions:r.assertions},null,2));
           JS
-
-      - name: Persist hard-boundary evidence
+      - name: Persist evidence
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add rsta030-final-verdict.json rsta030-external-receipt.json rsta030-execution-receipt.json
           git commit -m 'rsta: persist RSTA-030 hard external boundary receipt [skip ci]'
           git push origin HEAD:main
