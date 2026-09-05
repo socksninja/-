@@ -15,6 +15,8 @@
   "remote_receipt": {
     "decision": "ACCEPT",
     "capability": "EXECUTED",
+    "protocol_version": "RNCP-PORTABLE-1",
+    "commitment_id": "RSTA-016-PORTABLE-001",
     "commitment_hash": "5eecca09351dd256a0f18680f30ebb41327db19ecfcf0fbd4398abcdbca529dd",
     "execution_id": "external-executor-vercel-rsta016:RSTA-016-PORTABLE-001",
     "executor_id": "external-executor-vercel-rsta016",
