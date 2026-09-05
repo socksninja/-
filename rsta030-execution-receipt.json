@@ -4,13 +4,13 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-030 Hard External Authority Boundary",
-    "run_id": 33977423518,
+    "run_id": 33978059904,
     "run_attempt": 1,
     "job": "external_executor",
-    "head_commit": "c2e938cc89c7d79e63069b11baf3dfd966322857",
+    "head_commit": "558ca0e39c990f5d97f03ca87e0a5b1cf9f3ed74",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-05T16:18:12.611Z"
+    "generated_at": "2026-09-05T16:30:23.047Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -26,18 +26,18 @@
   },
   "chain": {
     "prior_rsta29_content_address": "ccb5af0ba8d456e0bad6239bd3e4de279379b64bfe08e5ad6e0000482c4393f4",
-    "commitment_hash": "5ce82a97638c0e566ece832f0d92bae10058262dada5faff0aa2afefa68a25a0",
-    "request_id": "RSTA-030-HARD-REQ-33977423518",
-    "event_id": "RSTA-030-HARD-REQ-33977423518:REALITY",
-    "event_hash": "194bf43f875e2d56787e852ee9d68fd8ec8c9ed6913f646d1b3acc68329762b9"
+    "commitment_hash": "7e925f67f810a2f27dfea164a4210413ddb9976ccd08b738807ec7e7c797d92a",
+    "request_id": "RSTA-030-HARD-REQ-33978059904",
+    "event_id": "RSTA-030-HARD-REQ-33978059904:REALITY",
+    "event_hash": "4dc407ad2d79e5b69b232123e28c2bd18e3680e09d17b286bc7908c4e2c358d1"
   },
   "external_action": {
     "system": "GitHub REST API",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 7,
-    "html_url": "https://github.com/socksninja/-/issues/7"
+    "issue_number": 41,
+    "html_url": "https://github.com/socksninja/-/issues/41"
   },
   "hard_boundary": {
     "subject_job_external_write_http_status": 403,
@@ -47,5 +47,5 @@
   },
   "policy": "NO_VALID_COMMITMENT_NO_EXTERNAL_WRITE",
   "verdict": "PASS",
-  "content_address": "5b4e28c3412733db2d6da6cf8b121904782c0db92d9a68bcc98cb3ba9532f3ec"
+  "content_address": "6e6bf803c6f8c1f6f23fbae4e0933e205b7698d1d80070a6af228a6ba46f109b"
 }
