@@ -1,0 +1,66 @@
+{
+  "schema": "RNCP-EXECUTION-RECEIPT-v1",
+  "rsta": "RSTA-035",
+  "protocol": "RNCP-BYZANTINE-MULTI-EXECUTOR-v1",
+  "execution": {
+    "provider": "github-actions",
+    "workflow": "RSTA-035 Byzantine Multi-Executor + Independent Fact Verifier",
+    "run_id": 33980738093,
+    "head_commit": "39b05e65f5a7fa9930c875a90b6c05aa527917c8",
+    "verifier_job": "independent-verifier"
+  },
+  "source": {
+    "type": "drand-independent-beacon",
+    "chain": "8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce",
+    "independent_issue_readback": true
+  },
+  "evaluated": [
+    {
+      "executor_id": "A",
+      "valid": true,
+      "reasons": [],
+      "issue_number": 211,
+      "reported_issue_number": 211
+    },
+    {
+      "executor_id": "B",
+      "valid": true,
+      "reasons": [],
+      "issue_number": 212,
+      "reported_issue_number": 212
+    },
+    {
+      "executor_id": "C",
+      "valid": false,
+      "reasons": [
+        "REPORTED_FACT_MISMATCH"
+      ],
+      "issue_number": 214,
+      "reported_issue_number": 1000214
+    }
+  ],
+  "scenarios": {
+    "one_byzantine": {
+      "verified_count": 2,
+      "quorum": 2,
+      "accepted": true
+    },
+    "two_colluding_false_reports": {
+      "forged_count": 0,
+      "quorum": 2,
+      "accepted": false
+    }
+  },
+  "assertions": {
+    "independent_verifier_read_only_boundary": true,
+    "three_executor_reports_collected": true,
+    "independent_drand_reverification": true,
+    "independent_external_fact_check": true,
+    "one_byzantine_executor_rejected": true,
+    "one_byzantine_still_quorum_accepts": true,
+    "two_colluding_false_reports_rejected_by_independent_fact_source": true,
+    "quorum_counts_only_independently_verified_reports": true
+  },
+  "verdict": "PASS",
+  "claim_boundary": "This proves a tested 2-of-3 fail-closed quorum where each report is checked against independently fetched external facts. It does not prove Byzantine consensus against an adversary that controls the independent fact source itself, nor does it claim arbitrary third-party infrastructure obeys RNCP."
+}
