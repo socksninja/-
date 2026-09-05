@@ -1,6 +1,10 @@
 name: RSTA-018 External Executor 2
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rsta-018-external-executor2.yml'
   workflow_dispatch:
 
 permissions:
@@ -14,30 +18,22 @@ jobs:
         run: |
           python3 - <<'PY'
           import hashlib, json, os
-
           commitment = {
               'protocol_version': 'RNCP-PORTABLE-1',
               'commitment_id': 'RSTA-018-PORTABLE-001',
               'action': 'POSTMAN_ECHO',
               'payload': {'message': 'RSTA-018 dual external execution'},
           }
-
           def canonical(v):
               if v is None or not isinstance(v, (dict, list)):
                   return json.dumps(v, separators=(',', ':'), ensure_ascii=False)
               if isinstance(v, list):
                   return '[' + ','.join(canonical(x) for x in v) + ']'
               return '{' + ','.join(json.dumps(k, ensure_ascii=False, separators=(',', ':')) + ':' + canonical(v[k]) for k in sorted(v)) + '}'
-
           def sha(v):
               return hashlib.sha256(canonical(v).encode()).hexdigest()
-
           commitment_hash = sha(commitment)
-          observed = {
-              'status': 'EXECUTED',
-              'action': commitment['action'],
-              'payload': commitment['payload'],
-          }
+          observed = {'status':'EXECUTED','action':commitment['action'],'payload':commitment['payload']}
           receipt_core = {
               **commitment,
               'commitment_hash': commitment_hash,
@@ -45,23 +41,20 @@ jobs:
               'executor_id': 'github-actions-executor2-rsta018',
               'implementation': 'standalone-python-github-actions',
               'executor_repository': 'socksninja/-',
-              'executor_revision': os.environ.get('GITHUB_SHA', 'unknown'),
+              'executor_revision': os.environ.get('GITHUB_SHA','unknown'),
               'transport': 'GITHUB_ACTIONS',
               'observed': observed,
           }
-          receipt = {**receipt_core, 'decision': 'ACCEPT', 'capability': 'EXECUTED'}
+          receipt = {**receipt_core,'decision':'ACCEPT','capability':'EXECUTED'}
           receipt['receipt_hash'] = sha(receipt_core)
-
           out = {
-              'rsta': 'RSTA-018',
-              'commitment': commitment,
-              'executor': 'github-actions-executor2-rsta018',
-              'receipt': receipt,
-              'execution_run_url': f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+              'rsta':'RSTA-018','commitment':commitment,
+              'executor':'github-actions-executor2-rsta018','receipt':receipt,
+              'execution_run_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
           }
-          with open('/tmp/rsta018-executor2.json', 'w', encoding='utf-8') as f:
-              json.dump(out, f, ensure_ascii=False, indent=2)
-          print(json.dumps(out, ensure_ascii=False, indent=2))
+          with open('/tmp/rsta018-executor2.json','w',encoding='utf-8') as f:
+              json.dump(out,f,ensure_ascii=False,indent=2)
+          print(json.dumps(out,ensure_ascii=False,indent=2))
           PY
       - name: Publish receipt into repository evidence ledger
         run: |
