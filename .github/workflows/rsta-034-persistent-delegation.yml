@@ -1,43 +1,31 @@
 name: RSTA-034 Persistent Delegation Ledger
-
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
 jobs:
   ledger-verification:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: read
     steps:
       - uses: actions/checkout@v4
-      - name: Verify persistent revocation, state machine and race semantics
+      - name: Run real persistent ledger verification
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node rsta/rsta034-live.mjs
+      - name: Verify persisted evidence
         run: |
           set -euo pipefail
-          node > rsta034-execution-receipt.json <<'JS'
-          import fs from 'node:fs';
-          import { createLedgerEntry, reserve, consume, revoke, ledgerHash } from './rsta/rsta034-ledger.mjs';
-          const prior=JSON.parse(fs.readFileSync('rsta033-execution-receipt.json','utf8')); if(prior.verdict!=='PASS') throw new Error('RSTA-033 prerequisite invalid');
-          const base=createLedgerEntry({delegationId:`RSTA-034-DELEGATION-${process.env.GITHUB_RUN_ID}`,delegationHash:prior.chain.delegation_hash,subjectId:'SUBJECT-RSTA-033',executorId:'EXTERNAL-GITHUB-EXECUTOR',commitmentHash:prior.chain.commitment_hash,scope:prior.delegation??{}});
-          const reserve1=reserve(base); if(reserve1.decision!=='ACCEPT') throw new Error('reserve failed');
-          const staleReserve=reserve({...base,version:0}); if(staleReserve.decision!=='ACCEPT') throw new Error('stale reservation unexpectedly accepted');
-          const reserved=reserve1.entry; const revoke1=revoke(reserved); if(revoke1.decision!=='ACCEPT') throw new Error('revoke failed');
-          const revokedConsume=consume(revoke1.entry); if(revokedConsume.decision!=='REJECT') throw new Error('revoked delegation consumed');
-          const active=reserve(reserve1.entry); if(active.decision==='ACCEPT') throw new Error('reserved delegation re-reserved');
-          const fresh=createLedgerEntry({delegationId:`RSTA-034-FRESH-${process.env.GITHUB_RUN_ID}`,delegationHash:prior.chain.delegation_hash,subjectId:'SUBJECT-RSTA-033',executorId:'EXTERNAL-GITHUB-EXECUTOR',commitmentHash:prior.chain.commitment_hash,scope:prior.delegation??{}});
-          const a=reserve(fresh); if(a.decision!=='ACCEPT') throw new Error('fresh reserve failed'); const b=reserve({...fresh,version:0}); if(b.decision!=='ACCEPT') throw new Error('simulation setup failed');
-          const raceLoser=reserve({...a.entry,version:0}); if(raceLoser.decision!=='REJECT' || raceLoser.code!=='VERSION_CONFLICT') throw new Error('optimistic race loser not rejected');
-          const consumed=consume(a.entry); if(consumed.decision!=='ACCEPT') throw new Error('consume failed'); const replay=consume(consumed.entry); if(replay.decision!=='REJECT') throw new Error('consumed replay accepted');
-          const assertions={prior_rsta033_verified:true,revocation_persists_in_state_machine:true,revoked_before_execution_denied:true,legal_state_transitions_enforced:true,consumed_replay_denied:true,stale_version_race_denied:true,single_reservation_winner_semantics:true};
-          const receipt={schema:'RNCP-EXECUTION-RECEIPT-v1',rsta:'RSTA-034',execution:{provider:'github-actions',workflow:process.env.GITHUB_WORKFLOW,run_id:Number(process.env.GITHUB_RUN_ID),job:'ledger-verification',head_commit:process.env.GITHUB_SHA},assertions,ledger_hash:ledgerHash(consumed.entry),revoked_entry:revoke1.entry,consumed_entry:consumed.entry,verdict:'PASS'};
-          receipt.content_address=ledgerHash(receipt); fs.writeFileSync('rsta034-final-verdict.json',JSON.stringify({rsta:'RSTA-034',status:'PASS',protocol:'RNCP-PERSISTENT-DELEGATION-LEDGER-v1',assertions,claim_boundary:'This tests a versioned persistent state-machine primitive and optimistic-concurrency race rejection. It does not by itself prove a globally atomic distributed database.'},null,2)); console.log(JSON.stringify(receipt,null,2));
-          JS
+          node -e "const r=require('./rsta034-execution-receipt.json'); if(r.verdict!=='PASS') process.exit(1); console.log(JSON.stringify(r,null,2))"
       - name: Persist RSTA-034 evidence
         run: |
           set -euo pipefail
-          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add rsta034-execution-receipt.json rsta034-final-verdict.json
-          git commit -m 'rsta: persist RSTA-034 ledger verification [skip ci]'
-          for i in 1 2 3 4 5; do git fetch origin main; git rebase origin/main && git push origin HEAD:main && exit 0 || { git rebase --abort || true; sleep 1; }; done
-          exit 1
+          git commit -m 'rsta: persist RSTA-034 execution evidence [skip ci]'
+          git fetch origin main
+          git rebase origin/main || { git rebase --abort; exit 1; }
+          git push origin HEAD:main
