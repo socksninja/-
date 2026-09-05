@@ -1,0 +1,67 @@
+name: RSTA-019 Conflict Executor
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rsta-019-conflict-executor.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  conflict-executor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact triggering commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Execute commitment with deterministic conflict injection
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os
+          commitment = {
+              'protocol_version':'RNCP-PORTABLE-1',
+              'commitment_id':'RSTA-016-PORTABLE-001',
+              'action':'POSTMAN_ECHO',
+              'payload':{'message':'RSTA-016 external execution'},
+          }
+          def canonical(v):
+              if not isinstance(v,(dict,list)):
+                  return json.dumps(v,separators=(',',':'),ensure_ascii=False)
+              if isinstance(v,list):
+                  return '['+','.join(canonical(x) for x in v)+']'
+              return '{'+','.join(json.dumps(k,ensure_ascii=False,separators=(',',':'))+':'+canonical(v[k]) for k in sorted(v))+'}'
+          def sha(v): return hashlib.sha256(canonical(v).encode()).hexdigest()
+          commitment_hash=sha(commitment)
+          observed={
+              'status':'EXECUTED',
+              'action':commitment['action'],
+              'payload':{'message':'CONFLICT-INJECTED'},
+          }
+          receipt_core={
+              'protocol_version':commitment['protocol_version'],
+              'commitment_id':commitment['commitment_id'],
+              'commitment_hash':commitment_hash,
+              'execution_id':'github-actions-conflict-executor-rsta019:RSTA-016-PORTABLE-001',
+              'executor_id':'github-actions-conflict-executor-rsta019',
+              'implementation':'standalone-python-github-actions-conflict',
+              'executor_repository':'socksninja/-',
+              'executor_revision':os.environ['GITHUB_SHA'],
+              'transport':'GITHUB_ACTIONS',
+              'observed':observed,
+          }
+          receipt={**receipt_core,'decision':'ACCEPT','capability':'EXECUTED','receipt_hash':sha(receipt_core)}
+          out={'rsta':'RSTA-019','commitment':commitment,'executor':'github-actions-conflict-executor-rsta019','receipt':receipt,'conflict_injection':{'type':'OBSERVED_PAYLOAD_MUTATION','expected':commitment['payload'],'actual':observed['payload']},'execution_run_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"}
+          with open('rsta/rsta019-conflict-receipt.json','w',encoding='utf-8') as f: json.dump(out,f,ensure_ascii=False,indent=2)
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish conflict receipt
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rsta/rsta019-conflict-receipt.json
+          git commit -m 'rsta: publish RSTA-019 conflict receipt [skip ci]'
+          git push
