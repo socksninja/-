@@ -1,0 +1,1 @@
+RSTA-030 external HTTP execution-boundary enforcement is implemented. The test chain binds Subject commitment to an external executor request, observes a real HTTP response, creates a signed external reality receipt, and denies mismatched/bypass/tampered requests.
