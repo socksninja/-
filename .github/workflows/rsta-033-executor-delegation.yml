@@ -136,17 +136,35 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RSTA035_ROLE: verify
         run: node rsta/rsta035-byzantine.mjs
-      - name: Persist RSTA-035 evidence via unique Contents API objects
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rsta035-verifier-evidence
+          path: |
+            rsta035-execution-receipt.json
+            rsta035-final-verdict.json
+
+  rsta035-evidence-writer:
+    needs: rsta035-independent-verifier
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: rsta035-verifier-evidence
+          path: evidence
+      - name: Persist independently verified evidence via unique Contents API objects
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           for file in rsta035-execution-receipt.json rsta035-final-verdict.json; do
-            body_b64=$(base64 -w 0 "$file")
+            body_b64=$(base64 -w 0 "evidence/$file")
             path="rsta-evidence/rsta035/${GITHUB_RUN_ID}-${file}"
             gh api "repos/${GITHUB_REPOSITORY}/contents/${path}" -X PUT \
               -f message="rsta: persist RSTA-035 ${file} run ${GITHUB_RUN_ID} [skip ci]" \
               -f content="$body_b64"
           done
-          echo "Evidence persisted for run ${GITHUB_RUN_ID}"
+          echo "RSTA-035 evidence persisted: ${GITHUB_RUN_ID}"
