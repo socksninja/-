@@ -1,8 +1,7 @@
 const PROTOCOL_VERSION = "RNCP-PORTABLE-1";
 const EXECUTOR_ID = "external-executor-vercel-rsta038";
-const EXECUTOR_REVISION = "rsta038-v2";
-const FIXED_EXTERNAL_ENDPOINT = "https://www.pastepile.com/api/public/pastes";
-const FIXED_EXTERNAL_EXPIRY = "1d";
+const EXECUTOR_REVISION = "rsta038-v3-aisense";
+const FIXED_EXTERNAL_ENDPOINT = "https://aisenseapi.com/services/v1/storage";
 const FIXED_ACTION = "RSTA038_PERSIST_EXTERNAL_FACT";
 
 function canonical(value) {
@@ -29,7 +28,7 @@ export async function POST(request) {
 
   let externalResponse;
   try {
-    externalResponse = await fetch(FIXED_EXTERNAL_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: JSON.stringify(fact), expiry: FIXED_EXTERNAL_EXPIRY }), cache: "no-store" });
+    externalResponse = await fetch(FIXED_EXTERNAL_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(fact), cache: "no-store" });
   } catch (error) {
     return json(502, { decision: "REJECT", reason: "EXTERNAL_FACT_SINK_NETWORK_ERROR", detail: String(error?.message || error) });
   }
@@ -38,14 +37,12 @@ export async function POST(request) {
 
   let external;
   try { external = JSON.parse(responseText); } catch { return json(502, { decision: "REJECT", reason: "EXTERNAL_FACT_SINK_INVALID_RESPONSE", external_body: responseText.slice(0, 1000) }); }
-  const slug = external?.slug;
-  const external_url = external?.raw_url || (slug ? `https://www.pastepile.com/raw/${slug}` : null);
-  const external_api_url = slug ? `https://www.pastepile.com/api/public/pastes/${slug}` : null;
-  if (!slug || !external_api_url) return json(502, { decision: "REJECT", reason: "EXTERNAL_FACT_SINK_NO_LOCATOR", external_body: responseText.slice(0, 1000) });
+  const storage_id = external?.storage_id;
+  const external_url = external?.read_url || `${FIXED_EXTERNAL_ENDPOINT}/${storage_id}`;
+  if (!storage_id) return json(502, { decision: "REJECT", reason: "EXTERNAL_FACT_SINK_NO_LOCATOR", external_body: responseText.slice(0, 1000) });
 
-  const observed = { status: "EXECUTED", action: FIXED_ACTION, payload: commitment.payload, external_fact: { service: "pastepile.com", endpoint: FIXED_EXTERNAL_ENDPOINT, method: "POST", locator: external_url, api_locator: external_api_url, response_sha256: await sha256(responseText) } };
-  const receiptCore = { protocol_version: PROTOCOL_VERSION, commitment_id: commitment.commitment_id, commitment_hash, execution_id, executor_id: EXECUTOR_ID, executor_revision: EXECUTOR_REVISION, policy: { action: FIXED_ACTION, external_endpoint: FIXED_EXTERNAL_ENDPOINT, external_method: "POST", external_expiry: FIXED_EXTERNAL_EXPIRY }, observed };
+  const observed = { status: "EXECUTED", action: FIXED_ACTION, payload: commitment.payload, external_fact: { service: "aisenseapi.com", endpoint: FIXED_EXTERNAL_ENDPOINT, method: "POST", locator: external_url, storage_id, response_sha256: await sha256(responseText) } };
+  const receiptCore = { protocol_version: PROTOCOL_VERSION, commitment_id: commitment.commitment_id, commitment_hash, execution_id, executor_id: EXECUTOR_ID, executor_revision: EXECUTOR_REVISION, policy: { action: FIXED_ACTION, external_endpoint: FIXED_EXTERNAL_ENDPOINT, external_method: "POST" }, observed };
   const receipt_hash = await sha256(receiptCore);
-  // deploy-marker: RSTA-038 v2 external fact diagnostics
   return json(200, { decision: "ACCEPT", capability: "EXECUTED", reality_receipt: { ...receiptCore, receipt_hash } });
 }
