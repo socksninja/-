@@ -36,9 +36,19 @@ jobs:
               return hashlib.sha256(canonical(v).encode()).hexdigest()
           commitment_hash = sha(commitment)
           observed = {'status':'EXECUTED','action':commitment['action'],'payload':commitment['payload']}
-          receipt_core = {**commitment,'commitment_hash':commitment_hash,'execution_id':'github-actions-executor2:RSTA-016-PORTABLE-001','executor_id':'github-actions-executor2-rsta018','implementation':'standalone-python-github-actions','executor_repository':'socksninja/-','executor_revision':os.environ.get('GITHUB_SHA','unknown'),'transport':'GITHUB_ACTIONS','observed':observed}
-          receipt = {**receipt_core,'decision':'ACCEPT','capability':'EXECUTED'}
-          receipt['receipt_hash'] = sha(receipt_core)
+          receipt_core = {
+              'protocol_version':commitment['protocol_version'],
+              'commitment_id':commitment['commitment_id'],
+              'commitment_hash':commitment_hash,
+              'execution_id':'github-actions-executor2:RSTA-016-PORTABLE-001',
+              'executor_id':'github-actions-executor2-rsta018',
+              'implementation':'standalone-python-github-actions',
+              'executor_repository':'socksninja/-',
+              'executor_revision':os.environ.get('GITHUB_SHA','unknown'),
+              'transport':'GITHUB_ACTIONS',
+              'observed':observed,
+          }
+          receipt = {**receipt_core,'decision':'ACCEPT','capability':'EXECUTED','receipt_hash':sha(receipt_core)}
           out = {'rsta':'RSTA-018','commitment':commitment,'executor':'github-actions-executor2-rsta018','receipt':receipt,'execution_run_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"}
           with open('rsta/rsta018-executor2-live-receipt.json','w',encoding='utf-8') as f:
               json.dump(out,f,ensure_ascii=False,indent=2)
@@ -49,5 +59,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add rsta/rsta018-executor2-live-receipt.json
-          git commit -m 'rsta: update executor2 receipt for shared portable commitment [skip ci]'
+          git commit -m 'rsta: update executor2 receipt with canonical receipt core [skip ci]'
           git push
