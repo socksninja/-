@@ -11,7 +11,7 @@ function canonical(value) {
 }
 
 function sha256(value) {
-  return createHash("sha256").update(value).digest("hex");
+  return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
 export async function POST(request) {
@@ -22,22 +22,25 @@ export async function POST(request) {
       return Response.json({ decision: "REJECT", reason: "missing_receipt" }, { status: 400 });
     }
 
-    const required = ["protocol", "commitment_id", "action", "payload", "commitment_hash", "execution_id", "executor_id", "executor_revision", "observed", "receipt_hash"];
+    const required = ["protocol_version", "commitment_id", "commitment_hash", "execution_id", "executor_id", "executor_revision", "observed", "receipt_hash"];
     const missing = required.filter((key) => !(key in receipt));
     if (missing.length) return Response.json({ decision: "REJECT", reason: "missing_fields", missing });
 
+    const observed = receipt.observed;
     const commitmentHash = sha256(canonical({
+      protocol_version: receipt.protocol_version,
       commitment_id: receipt.commitment_id,
-      action: receipt.action,
-      payload: receipt.payload,
+      action: observed?.action,
+      payload: observed?.payload,
     }));
 
     const { receipt_hash, ...unsigned } = receipt;
-    const receiptHash = sha256(canonical(unsigned));
+    const receiptHash = sha256(unsigned);
     const checks = {
-      protocol: receipt.protocol === PROTOCOL,
+      protocol: receipt.protocol_version === PROTOCOL,
       commitment_hash: receipt.commitment_hash === commitmentHash,
       identity: Boolean(receipt.execution_id && receipt.executor_id && receipt.executor_revision),
+      observed: observed?.status === "EXECUTED" && Boolean(observed?.action),
       receipt_hash: receipt.receipt_hash === receiptHash,
     };
     const accepted = Object.values(checks).every(Boolean);
