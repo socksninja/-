@@ -1,4 +1,5 @@
 name: RSTA-033 Executor Delegation
+# hard-verification-trigger-v2
 
 on:
   push:
@@ -61,7 +62,7 @@ jobs:
           import fs from 'node:fs'; import https from 'node:https';
           import { verifyCommitment } from './rsta/rncp-causal-commitment.mjs';
           import { createExecutorIdentity, createExecutionRequest, verifyExecutionRequest } from './rsta/rsta030-external-executor.mjs';
-          import { parseJwt, verifyJwtRs256, authorizeExecutorIdentity, createAttestation, GITHUB_OIDC_ISSUER } from './rsta/rsta032-executor-identity.mjs';
+          import { parseJwt, verifyJwtRs256, authorizeExecutorIdentity, createAttestation } from './rsta/rsta032-executor-identity.mjs';
           import { fixedDelegationPolicy, sha256Hex, verifyDelegation, consumeDelegation, createDelegatedRealityReceipt, verifyDelegatedRealityReceipt } from './rsta/rsta033-delegation.mjs';
           const intent=JSON.parse(fs.readFileSync('subject/subject-delegation.json','utf8')); const prior=JSON.parse(fs.readFileSync('rsta032-execution-receipt.json','utf8')); const policy=fixedDelegationPolicy(process.env.GITHUB_REPOSITORY); const body=policy.body({runId:process.env.GITHUB_RUN_ID});
           const c=verifyCommitment(intent.commitment,{expectedExecutorId:policy.executor_id,expectedAction:policy.action,capabilityTokenId:'RSTA-032-IDENTITY-PREREQUISITE',anchorEvidenceHash:prior.content_address}); if(c.decision!=='ACCEPT') throw new Error(`commitment rejected: ${c.code}`);
@@ -70,13 +71,13 @@ jobs:
           const expectedIdentity={executor_id:policy.executor_id,audience:process.env.OIDC_AUDIENCE,repository:process.env.GITHUB_REPOSITORY,repository_id:process.env.EXPECTED_REPOSITORY_ID,repository_visibility:'public',workflow_ref:process.env.EXPECTED_WORKFLOW_REF,ref:process.env.EXPECTED_REF,ref_type:'branch',event_name:process.env.GITHUB_EVENT_NAME,runner_environment:'github-hosted'}; const identity=authorizeExecutorIdentity(claims,expectedIdentity); if(identity.decision!=='ACCEPT') throw new Error(`identity rejected: ${identity.code}`); const attestation=createAttestation({token:process.env.OIDC_TOKEN,claims,executorId:identity.executor_id}); const attestationHash=sha256Hex(attestation);
           const dctx={subjectPublicKeyPem:intent.subject_public_key_pem,expectedSubjectId:intent.commitment.subject_id,expectedExecutorId:policy.executor_id,expectedCommitmentHash:intent.commitment.commitment_hash,expectedAction:policy.action,expectedMethod:policy.method,expectedPath:policy.path,expectedBodyHash:sha256Hex(body)};
           const valid=verifyDelegation(intent.delegation,dctx); if(valid.decision!=='ACCEPT') throw new Error(`delegation rejected: ${valid.code}`);
-          const unknownSubject=verifyDelegation({...intent.delegation,subject_id:'SUBJECT-ATTACKER'},dctx); if(unknownSubject.decision!=='REJECT') throw new Error('subject substitution accepted');
-          const wrongExecutor=verifyDelegation({...intent.delegation,executor_id:'ATTACKER-EXECUTOR'},dctx); if(wrongExecutor.decision!=='REJECT') throw new Error('executor substitution accepted');
-          const wrongCommitment=verifyDelegation({...intent.delegation,commitment_hash:'00'.repeat(32)},dctx); if(wrongCommitment.decision!=='REJECT') throw new Error('commitment substitution accepted');
-          const escalatedAction=verifyDelegation({...intent.delegation,action:'DELETE_REPOSITORY'},dctx); if(escalatedAction.decision!=='REJECT') throw new Error('action escalation accepted');
-          const escalatedPath=verifyDelegation({...intent.delegation,scope:{...intent.delegation.scope,path:`/repos/${process.env.GITHUB_REPOSITORY}/hooks`}},dctx); if(escalatedPath.decision!=='REJECT') throw new Error('path escalation accepted');
-          const escalatedBody=verifyDelegation({...intent.delegation,scope:{...intent.delegation.scope,body_hash:sha256Hex({malicious:true})}},dctx); if(escalatedBody.decision!=='REJECT') throw new Error('payload scope escalation accepted');
-          const attacker={...intent.delegation,subject_signature:intent.delegation.subject_signature.slice(0,-2)+'aa'}; if(verifyDelegation(attacker,dctx).decision!=='REJECT') throw new Error('signature forgery accepted');
+          if(verifyDelegation({...intent.delegation,subject_id:'SUBJECT-ATTACKER'},dctx).decision!=='REJECT') throw new Error('subject substitution accepted');
+          if(verifyDelegation({...intent.delegation,executor_id:'ATTACKER-EXECUTOR'},dctx).decision!=='REJECT') throw new Error('executor substitution accepted');
+          if(verifyDelegation({...intent.delegation,commitment_hash:'00'.repeat(32)},dctx).decision!=='REJECT') throw new Error('commitment substitution accepted');
+          if(verifyDelegation({...intent.delegation,action:'DELETE_REPOSITORY'},dctx).decision!=='REJECT') throw new Error('action escalation accepted');
+          if(verifyDelegation({...intent.delegation,scope:{...intent.delegation.scope,path:`/repos/${process.env.GITHUB_REPOSITORY}/hooks`}},dctx).decision!=='REJECT') throw new Error('path escalation accepted');
+          if(verifyDelegation({...intent.delegation,scope:{...intent.delegation.scope,body_hash:sha256Hex({malicious:true})}},dctx).decision!=='REJECT') throw new Error('payload scope escalation accepted');
+          if(verifyDelegation({...intent.delegation,subject_signature:intent.delegation.subject_signature.slice(0,-2)+'aa'},dctx).decision!=='REJECT') throw new Error('signature forgery accepted');
           const consumedIds=new Set(); const firstUse=consumeDelegation(intent.delegation,consumedIds,dctx); if(firstUse.decision!=='ACCEPT'||!firstUse.consumed) throw new Error('valid delegation not consumed'); const replay=consumeDelegation(intent.delegation,consumedIds,dctx); if(replay.decision!=='REJECT'||replay.code!=='DELEGATION_REPLAY') throw new Error('delegation replay accepted');
           const executor=createExecutorIdentity(policy.executor_id); const request=createExecutionRequest({executor,requestId:`RSTA-033-REQ-${process.env.GITHUB_RUN_ID}`,commitmentHash:intent.commitment.commitment_hash,action:policy.action,method:policy.method,path:policy.path,body,capabilityTokenId:intent.delegation.delegation_id});
           const requestCheck=verifyExecutionRequest(request,{executorPublicKeyPem:executor.publicKeyPem,expectedExecutorId:policy.executor_id,expectedCommitmentHash:intent.commitment.commitment_hash,expectedAction:policy.action,expectedMethod:policy.method,expectedPath:policy.path,expectedBodyHash:sha256Hex(body),expectedCapabilityTokenId:intent.delegation.delegation_id}); if(requestCheck.decision!=='ACCEPT') throw new Error(`request rejected: ${requestCheck.code}`);
