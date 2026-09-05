@@ -4,7 +4,7 @@ const PROTOCOL_VERSION = "RNCP-PORTABLE-1";
 const EXECUTOR_ID = "external-executor-vercel-rsta016";
 const IMPLEMENTATION = "standalone-node-next-route";
 const EXECUTOR_REPOSITORY = "socksninja/-";
-const EXECUTOR_REVISION = "6ce40908193b24e84eb5601812042f61636c598f";
+const EXECUTOR_REVISION = "a0902582aebff7d0b75df8fb870da4d75394beaa";
 
 function canonical(value) {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
@@ -21,6 +21,7 @@ function json(status, body) {
 }
 
 export async function GET() {
+  console.log("RSTA016_EXTERNAL_EXECUTOR_READY", { EXECUTOR_ID, EXECUTOR_REVISION });
   return json(200, {
     protocol_version: PROTOCOL_VERSION,
     executor_id: EXECUTOR_ID,
@@ -83,6 +84,12 @@ export async function POST(request) {
   };
 
   const receipt_hash = sha256(receiptCore);
+  console.log("RSTA016_EXTERNAL_EXECUTOR_EXECUTED", {
+    commitment_id: commitment.commitment_id,
+    execution_id,
+    commitment_hash,
+    receipt_hash,
+  });
 
   return json(200, {
     decision: "ACCEPT",
