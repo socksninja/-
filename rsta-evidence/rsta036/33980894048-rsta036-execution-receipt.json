@@ -1,0 +1,46 @@
+{
+  "schema": "RNCP-EXECUTION-RECEIPT-v1",
+  "rsta": "RSTA-036",
+  "protocol": "RNCP-PORTABLE-VERIFIER-v1",
+  "execution": {
+    "provider": "github-actions",
+    "workflow": "RSTA-036 Portable Verifier + Cross-Provider Adapter",
+    "run_id": 33980894048,
+    "head_commit": "f121f2d7eb61af639945c37ab19721437e00b434"
+  },
+  "source": {
+    "receipt_url": "https://raw.githubusercontent.com/socksninja/-/main/rsta-evidence/rsta035/33979726811-rsta035-execution-receipt.json",
+    "upstream_rsta": "RSTA-035",
+    "upstream_run_id": 33979726811
+  },
+  "adapters": [
+    "github-actions",
+    "generic-http",
+    "vercel-runtime-contract"
+  ],
+  "adapter_claims": {
+    "adapter_contract_valid": true,
+    "github_actions_adapter_live_read": true,
+    "generic_http_adapter_live_read": true,
+    "adapter_outputs_identical": true,
+    "portable_verifier_accepts_genuine": true,
+    "portable_verifier_rejects_authoritative_tamper": true,
+    "provider_neutral_core_used": true,
+    "vercel_adapter_contract_present": true,
+    "vercel_live_runtime_verified": false
+  },
+  "genuine_verifier_result": {
+    "decision": "ACCEPT",
+    "protocol": "RNCP-PORTABLE-VERIFIER-v1",
+    "reasons": []
+  },
+  "tampered_verifier_result": {
+    "decision": "REJECT",
+    "protocol": "RNCP-PORTABLE-VERIFIER-v1",
+    "reasons": [
+      "UPSTREAM_NOT_PASS"
+    ]
+  },
+  "verdict": "PASS",
+  "claim_boundary": "Proves a provider-neutral RNCP verifier can consume the same real receipt through multiple executor adapter implementations and reject authoritative tampering. It does not yet prove a live second cloud runtime such as Vercel executing the adapter; the Vercel adapter is contract-only in this run."
+}
