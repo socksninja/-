@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 33978262982,
+    "run_id": 33978552350,
     "job": "executor",
-    "head_commit": "4f2ba83ac1598cd02e733bbb42e25835cefd3e6c",
+    "head_commit": "a17389197ec3b2312f063bf5524560e1031513e5",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-05T16:34:13.162Z"
+    "generated_at": "2026-09-05T16:39:52.314Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "9e21638e57604fe294e9bced2d9432580e4eeef37c8bae8623b08da8b873c0b1"
+    "body_hash": "72f110a35d72671e917066de0fb908830c726b5e5592ed0a6014c2a9ac8bed14"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 54,
-    "html_url": "https://github.com/socksninja/-/issues/54"
+    "issue_number": 59,
+    "html_url": "https://github.com/socksninja/-/issues/59"
   },
   "chain": {
     "prior_rsta030_content_address": "6e6bf803c6f8c1f6f23fbae4e0933e205b7698d1d80070a6af228a6ba46f109b",
-    "commitment_hash": "9e28bc472c90a0d9f9f7beb10d9a82ecd84f96be6945bfd7862dd32370406a43",
-    "request_id": "RSTA-031-REQ-33978262982",
-    "event_id": "RSTA-031-REQ-33978262982:REALITY",
-    "event_hash": "0b6775403bede9f7f3ca582ed38826d18c65a212587449ed9a15c6d36ab753c5"
+    "commitment_hash": "5e512a01a78ca6408fde050af5c2bee36c0919c179eea9bee96f3375abc113e6",
+    "request_id": "RSTA-031-REQ-33978552350",
+    "event_id": "RSTA-031-REQ-33978552350:REALITY",
+    "event_hash": "e370f5125e27a1d7531b3e660210a27b7e0122f80adc1f0b16a518ffc5619a58"
   },
   "verdict": "PASS",
-  "content_address": "74cf3985ed13824dcc0eafa1aab54e702d197d3e7f098cc9af033eab7a32f676"
+  "content_address": "da343165208cbaf48b864edc90761c6194e2e5ca18491f44c23f40ecb49aaaaa"
 }
