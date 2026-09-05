@@ -46,5 +46,6 @@ export async function POST(request) {
   const observed = { status: "EXECUTED", action: FIXED_ACTION, payload: commitment.payload, external_fact: { service: "pastepile.com", endpoint: FIXED_EXTERNAL_ENDPOINT, method: "POST", locator: external_url, api_locator: external_api_url, response_sha256: await sha256(responseText) } };
   const receiptCore = { protocol_version: PROTOCOL_VERSION, commitment_id: commitment.commitment_id, commitment_hash, execution_id, executor_id: EXECUTOR_ID, executor_revision: EXECUTOR_REVISION, policy: { action: FIXED_ACTION, external_endpoint: FIXED_EXTERNAL_ENDPOINT, external_method: "POST", external_expiry: FIXED_EXTERNAL_EXPIRY }, observed };
   const receipt_hash = await sha256(receiptCore);
+  // deploy-marker: RSTA-038 v2 external fact diagnostics
   return json(200, { decision: "ACCEPT", capability: "EXECUTED", reality_receipt: { ...receiptCore, receipt_hash } });
 }
