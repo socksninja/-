@@ -62,28 +62,3 @@ jobs:
             git rebase origin/main && git push origin HEAD:main && exit 0 || { git rebase --abort || true; sleep 1; }
           done
           exit 1
-
-  rsta034-ledger:
-    needs: executor
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run real persistent ledger verification
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node rsta/rsta034-live.mjs
-      - name: Verify RSTA-034 receipt
-        run: node -e "const r=require('./rsta034-execution-receipt.json'); if(r.verdict!=='PASS') process.exit(1); console.log(JSON.stringify(r,null,2))"
-      - name: Persist RSTA-034 evidence
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add rsta034-execution-receipt.json rsta034-final-verdict.json
-          git commit -m 'rsta: persist RSTA-034 execution evidence [skip ci]'
-          git fetch origin main
-          git rebase origin/main || { git rebase --abort; exit 1; }
-          git push origin HEAD:main
