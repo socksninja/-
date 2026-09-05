@@ -1,0 +1,248 @@
+name: RSTA-028 Capability Token + Persistent Replay Ledger
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rsta-028-capability-ledger.yml'
+      - 'rsta/rsta028-capability-ledger.mjs'
+      - 'rsta027-execution-receipt.json'
+      - 'rsta027-external-anchor-evidence.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify prior external-fact receipt and exercise capability gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'JS'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import { issueCapability, verifyCapability, consumeCapability, createCapabilityKeyPair, tokenFingerprint } from './rsta/rsta028-capability-ledger.mjs';
+
+          const canonical = (value) => value && typeof value === 'object'
+            ? (Array.isArray(value)
+              ? '[' + value.map(canonical).join(',') + ']'
+              : '{' + Object.keys(value).sort().map((key) => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}')
+            : JSON.stringify(value);
+          const sha256Hex = (value) => crypto.createHash('sha256').update(canonical(value)).digest('hex');
+
+          const receipt = JSON.parse(fs.readFileSync('rsta027-execution-receipt.json', 'utf8'));
+          const storedReceiptHash = receipt.content_address;
+          const unsignedReceipt = structuredClone(receipt);
+          delete unsignedReceipt.content_address;
+          const recomputedReceiptHash = sha256Hex(unsignedReceipt);
+          if (storedReceiptHash !== recomputedReceiptHash) {
+            throw new Error(`prior receipt content-address mismatch stored=${storedReceiptHash} recomputed=${recomputedReceiptHash}`);
+          }
+          if (receipt.verdict !== 'PASS' || receipt.assertions?.capability_unlocked !== true || receipt.anchor?.status !== 'VERIFIED_EXTERNAL_FACT') {
+            throw new Error('prior RSTA-027 receipt is not an acceptable verified prerequisite');
+          }
+
+          const { privateKey, publicKey } = createCapabilityKeyPair();
+          const commitmentId = 'RSTA-028-CAPABILITY-LEDGER-001';
+          const action = 'MINT_AND_EXECUTE_GATED_ACTION';
+          const nonce = crypto.randomBytes(16).toString('hex');
+          const token = issueCapability({
+            privateKey,
+            publicKey,
+            commitmentId,
+            action,
+            anchorEvidenceHash: receipt.anchor.evidence_hash,
+            anchorRound: receipt.external_fact.round,
+            nonce,
+          });
+
+          const issuerKeyPem = token.issuer_public_key_pem;
+          const valid = verifyCapability(token, {
+            publicKeyPem: issuerKeyPem,
+            commitmentId,
+            action,
+            anchorEvidenceHash: receipt.anchor.evidence_hash,
+          });
+          if (valid.decision !== 'ACCEPT') throw new Error(`fresh capability rejected: ${valid.code}`);
+
+          const ledgerPath = 'rsta028-capability-ledger.json';
+          let ledger = { schema: 'RNCP-CAPABILITY-LEDGER-v1', consumed: [] };
+          if (fs.existsSync(ledgerPath)) ledger = JSON.parse(fs.readFileSync(ledgerPath, 'utf8'));
+          const consumedIds = new Set(ledger.consumed.map((entry) => entry.token_id));
+          if (consumedIds.has(token.token_id)) throw new Error('fresh token unexpectedly collides with persisted ledger');
+
+          const execution = consumeCapability(token, consumedIds, {
+            commitmentId,
+            action,
+            anchorEvidenceHash: receipt.anchor.evidence_hash,
+          });
+          if (execution.code !== 'CONSUMED' || execution.consumed !== true) throw new Error(`gated execution failed: ${execution.code}`);
+
+          ledger.consumed.push({
+            token_id: token.token_id,
+            token_fingerprint: tokenFingerprint(token),
+            commitment_id: token.commitment_id,
+            action: token.action,
+            anchor_evidence_hash: token.anchor_evidence_hash,
+            anchor_round: token.anchor_round,
+            consumed_at: new Date().toISOString(),
+            provider: 'github-actions',
+          });
+          ledger.consumed.sort((a, b) => a.token_id.localeCompare(b.token_id));
+          ledger.updated_at = new Date().toISOString();
+          fs.writeFileSync(ledgerPath, JSON.stringify(ledger, null, 2));
+
+          const reloadedLedger = JSON.parse(fs.readFileSync(ledgerPath, 'utf8'));
+          const persistedConsumed = new Set(reloadedLedger.consumed.map((entry) => entry.token_id));
+          const replay = consumeCapability(token, persistedConsumed, {
+            commitmentId,
+            action,
+            anchorEvidenceHash: receipt.anchor.evidence_hash,
+          });
+          const replayRejected = replay.code === 'TOKEN_REPLAY' && replay.consumed === false;
+          if (!replayRejected) throw new Error(`persistent replay was not rejected: ${JSON.stringify(replay)}`);
+
+          const forged = { ...token, action: 'FORGED_ACTION' };
+          const forgedAttempt = consumeCapability(forged, persistedConsumed, {
+            commitmentId,
+            action: 'FORGED_ACTION',
+            anchorEvidenceHash: receipt.anchor.evidence_hash,
+          });
+          const forgeryRejected = forgedAttempt.code === 'SIGNATURE_INVALID' || forgedAttempt.code === 'TOKEN_ID_INVALID';
+          if (!forgeryRejected) throw new Error(`forged capability unexpectedly accepted: ${JSON.stringify(forgedAttempt)}`);
+
+          let gatedArtifactCreated = false;
+          if (execution.code === 'CONSUMED') {
+            fs.writeFileSync('rsta028-gated-execution.json', JSON.stringify({
+              schema: 'RNCP-GATED-EXECUTION-v1',
+              commitment_id: commitmentId,
+              action,
+              token_id: token.token_id,
+              anchor_evidence_hash: receipt.anchor.evidence_hash,
+              execution_state: 'EXECUTED',
+              executed_at: new Date().toISOString(),
+            }, null, 2));
+            gatedArtifactCreated = true;
+          }
+
+          const verdict = {
+            rsta: 'RSTA-028',
+            status: 'PASS',
+            prerequisite: {
+              rsta: 'RSTA-027',
+              receipt_content_address: storedReceiptHash,
+              receipt_verified: true,
+              external_fact_round: receipt.external_fact.round,
+              anchor_evidence_hash: receipt.anchor.evidence_hash,
+            },
+            capability: {
+              schema: token.schema,
+              policy_version: token.policy_version,
+              token_id: token.token_id,
+              signature_valid: true,
+              binding_valid: true,
+            },
+            execution: {
+              gate_accepts_fresh_token: true,
+              gated_artifact_created: gatedArtifactCreated,
+              state: 'EXECUTED',
+            },
+            adversarial_controls: {
+              forged_action_rejected: forgeryRejected,
+              persistent_replay_rejected: replayRejected,
+              capability_required_before_execution: gatedArtifactCreated,
+            },
+            persistence: {
+              ledger_file: ledgerPath,
+              committed_token_count_after_run: ledger.consumed.length,
+              reload_verified: true,
+            },
+            claim_boundary: 'This proves signed capability binding and persistent replay rejection under the tested Git/GitHub Actions ledger. It does not by itself provide Byzantine consensus, independent key custody, or immutable storage against repository history rewrite.',
+          };
+
+          const receiptPayload = {
+            schema: 'RNCP-EXECUTION-RECEIPT-v1',
+            rsta: 'RSTA-028',
+            execution: {
+              provider: 'github-actions',
+              workflow: process.env.GITHUB_WORKFLOW,
+              run_id: Number(process.env.GITHUB_RUN_ID),
+              run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT),
+              job: 'verify',
+              head_commit: process.env.GITHUB_SHA,
+              event: process.env.GITHUB_EVENT_NAME,
+              ref: process.env.GITHUB_REF,
+              generated_at: new Date().toISOString(),
+            },
+            assertions: {
+              prior_receipt_verified: true,
+              capability_signature_valid: true,
+              capability_binding_valid: true,
+              fresh_token_consumed: true,
+              gated_artifact_created: gatedArtifactCreated,
+              forged_action_rejected: forgeryRejected,
+              persistent_replay_rejected: replayRejected,
+            },
+            capability: {
+              token_id: token.token_id,
+              token_fingerprint: tokenFingerprint(token),
+              commitment_id: commitmentId,
+              action,
+              anchor_evidence_hash: receipt.anchor.evidence_hash,
+              anchor_round: receipt.external_fact.round,
+            },
+            ledger: {
+              schema: ledger.schema,
+              consumed_token_count: ledger.consumed.length,
+            },
+            verdict: 'PASS',
+          };
+          receiptPayload.content_address = sha256Hex(receiptPayload);
+
+          fs.writeFileSync('rsta028-final-verdict.json', JSON.stringify(verdict, null, 2));
+          fs.writeFileSync('rsta028-execution-receipt.json', JSON.stringify(receiptPayload, null, 2));
+          console.log(JSON.stringify(verdict, null, 2));
+          JS
+
+      - name: Recompute receipt and verify content address
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'JS'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const canonical = (value) => value && typeof value === 'object'
+            ? (Array.isArray(value)
+              ? '[' + value.map(canonical).join(',') + ']'
+              : '{' + Object.keys(value).sort().map((key) => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}')
+            : JSON.stringify(value);
+          const sha256Hex = (value) => crypto.createHash('sha256').update(canonical(value)).digest('hex');
+          const receipt = JSON.parse(fs.readFileSync('rsta028-execution-receipt.json', 'utf8'));
+          const stored = receipt.content_address;
+          const copy = structuredClone(receipt);
+          delete copy.content_address;
+          const recomputed = sha256Hex(copy);
+          if (stored !== recomputed) throw new Error(`RSTA-028 receipt hash mismatch stored=${stored} recomputed=${recomputed}`);
+          if (receipt.verdict !== 'PASS') throw new Error('RSTA-028 receipt verdict is not PASS');
+          for (const [key, value] of Object.entries(receipt.assertions)) if (value !== true) throw new Error(`RSTA-028 assertion failed: ${key}`);
+          console.log(JSON.stringify({ receipt_verified: true, content_address: stored }, null, 2));
+          JS
+
+      - name: Persist RSTA-028 evidence on main
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rsta028-final-verdict.json rsta028-execution-receipt.json rsta028-capability-ledger.json rsta028-gated-execution.json
+          git commit -m 'rsta: persist RSTA-028 capability execution receipt [skip ci]'
+          git push origin HEAD:main
