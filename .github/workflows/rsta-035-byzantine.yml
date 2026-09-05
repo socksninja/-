@@ -1,0 +1,91 @@
+name: RSTA-035 Byzantine Multi-Executor + Independent Fact Verifier
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  executor-a:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute as A
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RSTA035_ROLE: A
+        run: node rsta/rsta035-byzantine.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rsta035-A
+          path: rsta035-A.json
+
+  executor-b:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute as B
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RSTA035_ROLE: B
+        run: node rsta/rsta035-byzantine.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rsta035-B
+          path: rsta035-B.json
+
+  executor-c:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute as Byzantine C
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RSTA035_ROLE: C
+        run: node rsta/rsta035-byzantine.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rsta035-C
+          path: rsta035-C.json
+
+  independent-verifier:
+    needs: [executor-a, executor-b, executor-c]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: rsta035-A
+          path: .
+      - uses: actions/download-artifact@v4
+        with:
+          name: rsta035-B
+          path: .
+      - uses: actions/download-artifact@v4
+        with:
+          name: rsta035-C
+          path: .
+      - name: Verify all reports independently
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RSTA035_ROLE: verify
+        run: node rsta/rsta035-byzantine.mjs
+      - name: Persist RSTA-035 evidence
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rsta035-execution-receipt.json rsta035-final-verdict.json
+          git commit -m 'rsta: persist RSTA-035 Byzantine evidence [skip ci]'
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
