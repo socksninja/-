@@ -64,7 +64,6 @@ jobs:
           exit 1
 
   rsta036-portability:
-    needs: executor
     runs-on: ubuntu-latest
     permissions:
       contents: write
