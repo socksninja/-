@@ -1,0 +1,51 @@
+{
+  "schema": "RNCP-EXECUTION-RECEIPT-v1",
+  "rsta": "RSTA-030",
+  "execution": {
+    "provider": "github-actions",
+    "workflow": "RSTA-030 Hard External Authority Boundary",
+    "run_id": 33977111855,
+    "run_attempt": 1,
+    "job": "external_executor",
+    "head_commit": "b7a8dcaf4ffd382286d9be80a547cbfb0abb7193",
+    "event": "push",
+    "ref": "refs/heads/main",
+    "generated_at": "2026-09-05T16:12:14.060Z"
+  },
+  "assertions": {
+    "commitment_verified": true,
+    "request_signature_verified": true,
+    "capability_binding_verified": true,
+    "request_payload_hash_verified": true,
+    "real_external_api_action": true,
+    "external_reality_receipt_verified": true,
+    "direct_bypass_denied": true,
+    "forged_action_denied": true,
+    "forged_path_denied": true,
+    "tampered_reality_receipt_denied": true
+  },
+  "chain": {
+    "prior_rsta29_content_address": "ccb5af0ba8d456e0bad6239bd3e4de279379b64bfe08e5ad6e0000482c4393f4",
+    "commitment_hash": "3ee682b0a3672e68faa6444f9c73022ede25554e8a3c81fe3de6d2963504c1a5",
+    "request_id": "RSTA-030-HARD-REQ-33977111855",
+    "event_id": "RSTA-030-HARD-REQ-33977111855:REALITY",
+    "event_hash": "2e5605864a3d02d156c12460d3271c429ec66aac1d030c5da98c300ed8a567eb"
+  },
+  "external_action": {
+    "system": "GitHub REST API",
+    "method": "POST",
+    "path": "/repos/socksninja/-/issues",
+    "status": 201,
+    "issue_number": 3,
+    "html_url": "https://github.com/socksninja/-/issues/3"
+  },
+  "hard_boundary": {
+    "subject_job_external_write_http_status": 403,
+    "subject_direct_bypass_denied": true,
+    "external_executor_authority": "GitHub Actions job with issues:write",
+    "subject_authority": "GitHub Actions job without issues:write"
+  },
+  "policy": "NO_VALID_COMMITMENT_NO_EXTERNAL_WRITE",
+  "verdict": "PASS",
+  "content_address": "9c2bf51da954448a80edda96dbb5c8b3b8eb19fe432159c9186e43631d82726d"
+}
