@@ -72,16 +72,47 @@ jobs:
           const collusionRejected='FALSE-REALITY'!==good.randomness;
           const capabilityUnlock=!!(randomnessOk&&blsOk&&collusionRejected&&tamperRejected&&replayRejected);if(!capabilityUnlock)throw new Error('capability gate failed');
           const verdict={rsta:'RSTA-027',status:'PASS',external_fact:{source:'drand-League-of-Entropy-default',chain:CHAIN,round:Number(good.round),randomness:good.randomness,signature:good.signature,relay_count:RELAYS.length},verification:{randomness_hash_binding:randomnessOk,bls_signature:blsOk,cross_relay_agreement:true,pinned_public_key:PINNED_PUBKEY},anchor:{type:'RNCP-VERIFIED-ANCHOR',version:'RNCP-VERIFIED-ANCHOR-v1',proof,evidence_hash:evidenceHash,status:'VERIFIED_EXTERNAL_FACT'},adversarial_controls:{colluder_claim_not_equal_external_fact:collusionRejected,tampered_anchor_rejected:tamperRejected,replay_rejected:replayRejected},capability_gate:{decision:'UNLOCKED',reason:'FRESH_BLS_VERIFIED_EXTERNAL_FACT_BOUND_TO_ANCHOR'},claim_boundary:'The external fact source is an additional trust boundary; this does not turn a generic 2-of-3 quorum into Byzantine consensus.',evidence_hash:shaHex({external_fact:good,relays:RELAYS,anchorCore,proof,evidenceHash})};
-          fs.writeFileSync('rsta027-external-anchor-evidence.json',JSON.stringify({anchor:{type:'RNCP-VERIFIED-ANCHOR',version:'RNCP-VERIFIED-ANCHOR-v1',anchor_core:anchorCore,proof,evidence_hash:evidenceHash,anchor_status:'VERIFIED_EXTERNAL_FACT'},raw_beacon:good,relays:RELAYS},null,2));console.log(JSON.stringify(verdict,null,2));
+          const receiptPayload={
+            schema:'RNCP-EXECUTION-RECEIPT-v1',
+            rsta:'RSTA-027',
+            execution:{provider:'github-actions',workflow:process.env.GITHUB_WORKFLOW,run_id:Number(process.env.GITHUB_RUN_ID),run_attempt:Number(process.env.GITHUB_RUN_ATTEMPT),job:'verify',head_commit:process.env.GITHUB_SHA,event:process.env.GITHUB_EVENT_NAME,ref:process.env.GITHUB_REF,generated_at:new Date().toISOString()},
+            assertions:{github_actions_execution:'OBSERVED',fresh_drand:true,bls_pass:blsOk,anchor_hash:evidenceHash,tamper_reject:tamperRejected,replay_reject:replayRejected,capability_unlocked:capabilityUnlock},
+            anchor:{type:'RNCP-VERIFIED-ANCHOR',version:'RNCP-VERIFIED-ANCHOR-v1',proof,evidence_hash:evidenceHash,status:'VERIFIED_EXTERNAL_FACT'},
+            external_fact:{source:'drand-League-of-Entropy-default',chain:CHAIN,round:Number(good.round),randomness:good.randomness,signature:good.signature,relay_count:RELAYS.length},
+            verdict:'PASS'
+          };
+          receiptPayload.content_address=shaHex(receiptPayload);
+          fs.writeFileSync('rsta027-external-anchor-evidence.json',JSON.stringify({anchor:{type:'RNCP-VERIFIED-ANCHOR',version:'RNCP-VERIFIED-ANCHOR-v1',anchor_core:anchorCore,proof,evidence_hash:evidenceHash,anchor_status:'VERIFIED_EXTERNAL_FACT'},raw_beacon:good,relays:RELAYS},null,2));
+          fs.writeFileSync('rsta027-execution-receipt.json',JSON.stringify(receiptPayload,null,2));
+          console.log(JSON.stringify(verdict,null,2));
           JS
 
-      - name: Persist RSTA-027 evidence on main
+      - name: Recompute and verify receipt before commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'JS'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const canonical=v=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'):JSON.stringify(v);
+          const shaHex=v=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
+          const r=JSON.parse(fs.readFileSync('rsta027-execution-receipt.json','utf8'));
+          const stored=r.content_address;
+          const copy=structuredClone(r); delete copy.content_address;
+          const recomputed=shaHex(copy);
+          if(stored!==recomputed)throw new Error(`receipt hash mismatch stored=${stored} recomputed=${recomputed}`);
+          if(r.verdict!=='PASS')throw new Error('receipt verdict is not PASS');
+          for(const [k,v] of Object.entries(r.assertions))if(v===false)throw new Error(`receipt assertion false: ${k}`);
+          console.log(JSON.stringify({receipt_verified:true,content_address:stored,run_id:r.execution.run_id,head_commit:r.execution.head_commit},null,2));
+          JS
+
+      - name: Persist RSTA-027 execution receipt on main
         if: github.event_name == 'push'
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add rsta027-final-verdict.json rsta027-external-anchor-evidence.json
-          git commit -m 'rsta: persist RSTA-027 external fact linked anchor [skip ci]'
+          git add rsta027-final-verdict.json rsta027-external-anchor-evidence.json rsta027-execution-receipt.json
+          git commit -m 'rsta: persist RSTA-027 execution receipt [skip ci]'
           git push origin HEAD:main
