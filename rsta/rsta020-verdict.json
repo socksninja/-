@@ -1,0 +1,16 @@
+{
+  "rsta": "RSTA-020",
+  "matrix": {
+    "1_of_3_positive": "REJECT",
+    "2_of_3_positive_1_conflict": "ACCEPT",
+    "3_of_3_positive": "ACCEPT"
+  },
+  "tamper": "REJECT",
+  "replay": "REJECT",
+  "policy": "2/3 deterministic quorum; fail-closed on integrity/replay failure",
+  "receipt_hashes": [
+    "d8840059e5d075711e677523ecdfb55ecb523f92569b254b7b4a4293001be2be",
+    "c956f5b139659bbb7f38cd2a3f7f8dc4185442568fe6c378ea4a5ac774bdb94c",
+    "67dce5eead4e1364d75e4c87fb66ff30ab8fd3092b5a403fd541e0543cec57b0"
+  ]
+}
