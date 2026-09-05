@@ -106,34 +106,17 @@ jobs:
             if(!ok) throw new Error(`anchor continuity failed ${own[i-1].round}->${own[i].round}`);
           }
 
-          const anchorCore={
-            chain:CHAIN,
-            round:target,
-            signature:own[2].signature,
-            previous_signature:own[2].previous_signature,
-            cryptographically_valid:true,
-            relay_count:RELAYS.length,
-            cross_relay_agreement:true,
-            continuity:true,
-            evidence_hash:shaHex({chain:CHAIN,round:target,signature:own[2].signature,previous_signature:own[2].previous_signature})
-          };
-          // This token is minted only after live BLS + cross-relay + continuity verification.
+          const anchorCore={chain:CHAIN,round:target,signature:own[2].signature,previous_signature:own[2].previous_signature,cryptographically_valid:true,relay_count:RELAYS.length,cross_relay_agreement:true,continuity:true,evidence_hash:shaHex({chain:CHAIN,round:target,signature:own[2].signature,previous_signature:own[2].previous_signature})};
           const verifiedProof=shaHex(anchorCore);
           const anchor={...anchorCore,proof:verifiedProof};
 
-          // Capability gate: all authority-bearing predicates plus the unforgeable-in-context
-          // proof digest must match the freshly verified Reality Anchor before any side effect.
+          // Recompute the proof from the candidate itself. A copied old proof is not enough:
+          // changing any authority-bearing field must invalidate the candidate.
           function capabilityGate(a){
-            const valid=!!a &&
-              a.proof===verifiedProof &&
-              a.cryptographically_valid===true &&
-              a.cross_relay_agreement===true &&
-              a.continuity===true &&
-              a.chain===CHAIN &&
-              Number(a.round)===target &&
-              typeof a.signature==='string' && a.signature.length===192 &&
-              typeof a.previous_signature==='string' && a.previous_signature.length===192 &&
-              a.evidence_hash===anchorCore.evidence_hash;
+            if(!a) return {decision:'REJECT',capability:'CAPABILITY_LOCKED'};
+            const candidateCore={chain:a.chain,round:a.round,signature:a.signature,previous_signature:a.previous_signature,cryptographically_valid:a.cryptographically_valid,relay_count:a.relay_count,cross_relay_agreement:a.cross_relay_agreement,continuity:a.continuity,evidence_hash:a.evidence_hash};
+            const recomputedProof=shaHex(candidateCore);
+            const valid=a.proof===recomputedProof && a.proof===verifiedProof && a.cryptographically_valid===true && a.cross_relay_agreement===true && a.continuity===true && a.chain===CHAIN && Number(a.round)===target && typeof a.signature==='string' && a.signature.length===192 && typeof a.previous_signature==='string' && a.previous_signature.length===192 && a.evidence_hash===anchorCore.evidence_hash;
             return valid ? {decision:'ACCEPT',capability:'CAPABILITY_UNLOCKED'} : {decision:'REJECT',capability:'CAPABILITY_LOCKED'};
           }
 
@@ -166,17 +149,15 @@ jobs:
             relay_disagreement:{...anchor,cross_relay_agreement:false},
             wrong_chain:{...anchor,chain:'wrong-chain'},
             tampered_proof:{...anchor,proof:'00'.repeat(32)},
-            tampered_evidence_hash:{...anchor,evidence_hash:'00'.repeat(32)}
+            tampered_evidence_hash:{...anchor,evidence_hash:'00'.repeat(32)},
+            copied_proof_with_payload_change:{...anchor,signature:anchor.signature.slice(0,-2)+'00'}
           };
           const negativeResults={};
           for(const [name,candidate] of Object.entries(negatives)){
             const before=actionInvocations;
             const gate=capabilityGate(candidate);
-            let executionAttempted=false;
-            if(gate.decision==='ACCEPT'){
-              executionAttempted=true;
-              await executeCapability(gate);
-            }
+            const executionAttempted=gate.decision==='ACCEPT';
+            if(executionAttempted) await executeCapability(gate);
             negativeResults[name]={decision:gate.decision,capability:gate.capability,execution_attempted:executionAttempted,action_invocations_delta:actionInvocations-before};
             if(!(gate.decision==='REJECT'&&gate.capability==='CAPABILITY_LOCKED'&&!executionAttempted&&actionInvocations===before)) throw new Error(`negative gate failed: ${name}`);
           }
@@ -186,7 +167,7 @@ jobs:
 
           const final={
             rsta:'RSTA-024',status:'PASS',
-            invariant:'CAPABILITY_UNLOCKED and EXECUTED require the freshly verified Reality Anchor proof',
+            invariant:'CAPABILITY_UNLOCKED and EXECUTED require a freshly verified Reality Anchor plus recomputed proof binding',
             baseline:{gate:baselineGate,execution:baselineExecution,external_http_status:externalStatus,external_response_sha256:externalResponseHash,action_invocations:actionInvocations},
             anchor:{...anchor,checks:anchorChecks,chain_links:chainLinks},
             negative_controls:negativeResults,
