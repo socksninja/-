@@ -2,15 +2,7 @@
   "rsta": "RSTA-025",
   "status": "PASS",
   "primitive": "rsta/capability-gate.mjs",
-  "policy_version": "RNCP-CAPABILITY-GATE-v1",
-  "state_model": [
-    "PENDING",
-    "ANCHOR_VERIFIED",
-    "CAPABILITY_UNLOCKED",
-    "EXECUTING",
-    "EXECUTED",
-    "REALITY_RECEIPT"
-  ],
+  "anchor_contract": "RNCP-VERIFIED-ANCHOR-v1",
   "baseline": {
     "issued": true,
     "state": "CAPABILITY_UNLOCKED",
@@ -58,7 +50,7 @@
     }
   },
   "invariants": {
-    "capability_unlocked_requires_verified_anchor": true,
+    "capability_unlocked_requires_signed_verified_anchor": true,
     "signed_capability_required_for_execution": true,
     "commitment_and_action_bound": true,
     "direct_unlock_object_rejected": true,
@@ -67,5 +59,5 @@
     "all_negative_controls_rejected": true,
     "direct_execution_bypass_rejected": true
   },
-  "evidence_hash": "843ee7ada2ad91e887479c4895763b98b3d2d6594cb7224f4553ba691524de18"
+  "evidence_hash": "6c47f94406621f9322bee636201f43c32d49f5d36bd9ec4ae6a899fdf5f36582"
 }
