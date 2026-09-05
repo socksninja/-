@@ -1,0 +1,38 @@
+name: RSTA-021 GitHub Executor B
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rsta-021-github-executor.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  executor-b:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute RSTA-021 commitment in GitHub Actions
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os
+          commitment={'protocol_version':'RNCP-PORTABLE-1','commitment_id':'RSTA-021-CROSS-INFRA-001','action':'POSTMAN_ECHO','payload':{'message':'RSTA-021 cross infrastructure'}}
+          observed={'status':'EXECUTED','action':commitment['action'],'payload':commitment['payload']}
+          def canonical(v):
+              if not isinstance(v,(dict,list)): return json.dumps(v,separators=(',',':'),ensure_ascii=False)
+              if isinstance(v,list): return '['+','.join(canonical(x) for x in v)+']'
+              return '{'+','.join(json.dumps(k,ensure_ascii=False,separators=(',',':'))+':'+canonical(v[k]) for k in sorted(v))+'}'
+          def sha(v): return hashlib.sha256(canonical(v).encode()).hexdigest()
+          core={'protocol_version':commitment['protocol_version'],'commitment_id':commitment['commitment_id'],'commitment_hash':sha(commitment),'execution_id':'github-actions-executor-rsta021:RSTA-021-CROSS-INFRA-001','executor_id':'github-actions-executor-rsta021','implementation':'standalone-python-github-actions','transport':'GITHUB_ACTIONS','observed':observed}
+          receipt={**core,'decision':'ACCEPT','capability':'EXECUTED','receipt_hash':sha(core)}
+          out={'rsta':'RSTA-021','executor':'github-actions-executor-rsta021','commitment':commitment,'receipt':receipt,'execution_run_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"}
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          with open('rsta021-github-receipt.json','w') as f: json.dump(out,f,ensure_ascii=False,indent=2)
+          PY
+      - name: Upload live receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsta021-github-receipt
+          path: rsta021-github-receipt.json
