@@ -1,0 +1,156 @@
+name: RSTA-023 BLS Cryptographic Verification and Anti-Equivocation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rsta-023-bls-chain.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pinned commit
+        uses: actions/checkout@v4
+
+      - name: Install verification dependencies
+        run: |
+          set -euo pipefail
+          cat > package.json <<'JSON'
+          {"type":"module","private":true,"dependencies":{"@noble/curves":"^1.9.7","@noble/hashes":"^1.8.0"}}
+          JSON
+          npm install --silent
+
+      - name: Fetch 3 relays and perform BLS + continuity + anti-equivocation verification
+        run: |
+          set -euo pipefail
+          node > rsta023-final-verdict.json <<'JS'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import {bls12_381 as bls} from '@noble/curves/bls12-381';
+          import {sha256} from '@noble/hashes/sha2';
+
+          const CHAIN='8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce';
+          const PINNED_PUBKEY='868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31';
+          const RELAYS=['https://api.drand.sh','https://api2.drand.sh','https://api3.drand.sh'];
+          const PERIOD=30;
+          const GENESIS=1595431050;
+          const SCHEME='pedersen-bls-chained';
+
+          const hex = x => x.toLowerCase();
+          const h = b => Buffer.from(sha256(b));
+          const be64 = n => { const b=Buffer.alloc(8); b.writeBigUInt64BE(BigInt(n)); return b; };
+          const canonical = v => v && typeof v==='object' ? (Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}') : JSON.stringify(v);
+          const shaHex = v => crypto.createHash('sha256').update(canonical(v)).digest('hex');
+
+          function currentRound(nowSec=Math.floor(Date.now()/1000)) {
+            if (nowSec < GENESIS) return 0;
+            return Math.floor((nowSec-GENESIS)/PERIOD)+1;
+          }
+
+          async function getJson(url) {
+            const r=await fetch(url,{headers:{accept:'application/json'},cache:'no-store'});
+            if (!r.ok) throw new Error(`${url} HTTP ${r.status}`);
+            return await r.json();
+          }
+
+          async function getBeacon(relay, round='latest') {
+            const candidates = round==='latest'
+              ? [`${relay}/${CHAIN}/public/latest`,`${relay}/public/latest`]
+              : [`${relay}/${CHAIN}/public/${round}`,`${relay}/public/${round}`];
+            let last;
+            for (const u of candidates) {
+              try { return {...await getJson(u),_url:u}; } catch(e) { last=e; }
+            }
+            throw last;
+          }
+
+          function verifyRandomness(beacon) {
+            return Buffer.from(beacon.randomness,'hex').equals(h(Buffer.from(beacon.signature,'hex')));
+          }
+
+          function verifyBlsChained(beacon) {
+            const sig=bls.G1.ProjectivePoint.fromHex(beacon.signature);
+            const pk=bls.G2.ProjectivePoint.fromHex(PINNED_PUBKEY);
+            const msg=h(Buffer.concat([Buffer.from(beacon.previous_signature,'hex'),be64(beacon.round)]));
+            const hm=bls.G1.hashToCurve(msg,{DST:'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_'});
+            return bls.pairing(hm,pk,true).equals(bls.pairing(sig,bls.G2.ProjectivePoint.BASE,true));
+          }
+
+          const relayData=[];
+          for (const relay of RELAYS) {
+            const info=await getJson(`${relay}/${CHAIN}/info`);
+            if (info.hash!==CHAIN) throw new Error(`chain hash mismatch at ${relay}: ${info.hash}`);
+            if (info.period!==PERIOD || info.genesis_time!==GENESIS) throw new Error(`chain timing mismatch at ${relay}`);
+            if (info.schemeID && info.schemeID!==SCHEME) throw new Error(`scheme mismatch at ${relay}: ${info.schemeID}`);
+            if (info.public_key && hex(info.public_key)!==PINNED_PUBKEY) throw new Error(`public key mismatch at ${relay}`);
+            const latest=await getBeacon(relay);
+            const r=Number(latest.round);
+            const prev=await getBeacon(relay,r-1);
+            relayData.push({relay,info,latest,prev});
+          }
+
+          const rounds=relayData.map(x=>x.latest.round);
+          const signatures=relayData.map(x=>x.latest.signature);
+          const previous=relayData.map(x=>x.latest.previous_signature);
+          const sameRound=new Set(rounds).size===1;
+          const sameSignature=new Set(signatures).size===1;
+          const samePrevious=new Set(previous).size===1;
+          if (!(sameRound && sameSignature && samePrevious)) throw new Error(`cross-relay equivocation: rounds=${rounds} signatures=${signatures} previous=${previous}`);
+
+          const latest=relayData[0].latest;
+          const prev=relayData[0].prev;
+          const continuity = Number(latest.round)===Number(prev.round)+1 && latest.previous_signature===prev.signature;
+          if (!continuity) throw new Error('round continuity / previous-signature linkage failed');
+
+          const now=Math.floor(Date.now()/1000);
+          const expected=currentRound(now);
+          // Allow one-round race because the latest endpoint can advance during the test.
+          const roundTimeOk = Number(latest.round)===expected || Number(latest.round)===expected-1 || Number(latest.round)===expected+1;
+          if (!roundTimeOk) throw new Error(`round-time mismatch: latest=${latest.round} expected=${expected}`);
+
+          const randomnessOk=verifyRandomness(latest);
+          const blsOk=verifyBlsChained(latest);
+          if (!(randomnessOk && blsOk)) throw new Error(`cryptographic verification failed: randomness=${randomnessOk} bls=${blsOk}`);
+
+          // Negative controls: mutate the signature, previous signature, and round.
+          const badSig={...latest,signature:'00'.repeat(96)};
+          const badPrev={...latest,previous_signature:'00'.repeat(96)};
+          const badRound={...latest,round:Number(latest.round)+1};
+          const tamperReject = !verifyRandomness(badSig) && (()=>{try{return !verifyBlsChained(badSig)}catch{return true}})();
+          const prevReject = (()=>{try{return !verifyBlsChained(badPrev)}catch{return true}})();
+          const roundReject = (()=>{try{return !verifyBlsChained(badRound)}catch{return true}})();
+          if (!(tamperReject && prevReject && roundReject)) throw new Error('negative cryptographic controls failed');
+
+          const antiEquivocation = sameRound && sameSignature && samePrevious;
+          if (!antiEquivocation) throw new Error('anti-equivocation failed');
+
+          const verdict={
+            rsta:'RSTA-023',status:'PASS',
+            chain:{hash:CHAIN,scheme:SCHEME,period:PERIOD,genesis_time:GENESIS,pinned_public_key:PINNED_PUBKEY},
+            latest_round:Number(latest.round),
+            current_round_expected:expected,
+            round_time_window:'latest in expected±1 due to concurrent round rollover',
+            bls_signature_verification:blsOk,
+            randomness_hash_binding:randomnessOk,
+            round_continuity:continuity,
+            cross_relay_anti_equivocation:{rounds_equal:sameRound,signatures_equal:sameSignature,previous_signatures_equal:samePrevious,relay_count:RELAYS.length},
+            negative_controls:{tampered_signature_rejected:tamperReject,previous_signature_rejected:prevReject,round_mutation_rejected:roundReject},
+            relays:relayData.map(x=>({relay:x.relay,round:x.latest.round,signature:x.latest.signature,previous_signature:x.latest.previous_signature,observed_url:x.latest._url})),
+            evidence_hash:shaHex({round:latest.round,signature:latest.signature,previous_signature:latest.previous_signature,randomness:latest.randomness,chain:CHAIN})
+          };
+          console.log(JSON.stringify(verdict,null,2));
+          JS
+
+      - name: Persist RSTA-023 verdict
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rsta023-final-verdict.json package.json package-lock.json
+          git commit -m 'rsta: persist RSTA-023 cryptographic verification verdict [skip ci]'
+          git push origin HEAD:main
