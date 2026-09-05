@@ -1,0 +1,158 @@
+name: RSTA-026 VerifiedAnchor Protocol Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'rsta/verified-anchor.mjs'
+      - 'rsta/capability-gate.mjs'
+      - '.github/workflows/rsta-026-verified-anchor-protocol.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  protocol:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify Reality → VerifiedAnchor → Capability → Execution protocol
+        run: |
+          set -euo pipefail
+          node > rsta026-final-verdict.json <<'JS'
+          import crypto from 'node:crypto';
+          import {
+            createAnchorVerifier,
+            generateAnchorVerifierKeyPair,
+            verifyVerifiedAnchorOffline,
+          } from './rsta/verified-anchor.mjs';
+          import {
+            CAPABILITY_STATE,
+            createCapabilityIssuer,
+            generateIssuerKeyPair,
+          } from './rsta/capability-gate.mjs';
+
+          const COMMITMENT='RSTA-026-PROTOCOL-COMMITMENT-001';
+          const ACTION='RSTA026_PROTOCOL_EXECUTION';
+
+          const verifierKeys=generateAnchorVerifierKeyPair();
+          const anchorVerifier=createAnchorVerifier({
+            privateKey:verifierKeys.privateKey,
+            publicKey:verifierKeys.publicKey,
+            verifierId:'RNCP-ANCHOR-VERIFIER-RSTA026',
+          });
+          const anchor=anchorVerifier.attest({core:{
+            chain:'8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce',
+            round:6439521,
+            signature:'aa'.repeat(96),
+            previous_signature:'bb'.repeat(96),
+            source:'RSTA-026-test-anchor',
+          }});
+
+          const anchorOffline=verifyVerifiedAnchorOffline({anchor,publicKeyPem:anchorVerifier.publicKeyPem,verifierId:'RNCP-ANCHOR-VERIFIER-RSTA026'});
+          if(anchorOffline.decision!=='ACCEPT') throw new Error(`verified anchor baseline failed: ${anchorOffline.code}`);
+
+          const issuerKeys=generateIssuerKeyPair();
+          const gate=createCapabilityIssuer({privateKey:issuerKeys.privateKey,publicKey:issuerKeys.publicKey});
+          const token=gate.issue({
+            commitment:COMMITMENT,
+            action:ACTION,
+            anchor,
+            anchorVerifierPublicKeyPem:anchorVerifier.publicKeyPem,
+            nonce:'rsta026-fixed-nonce',
+          });
+          const verified=gate.verifyCapability(token,{commitment:COMMITMENT,action:ACTION});
+          if(!verified.valid) throw new Error(`capability baseline failed: ${verified.code}`);
+          const execution=gate.beginExecution(token,{commitment:COMMITMENT,action:ACTION});
+          if(execution.state!==CAPABILITY_STATE.EXECUTED) throw new Error('execution did not reach EXECUTED');
+
+          const negativeControls={};
+          const expectIssueReject=(name, mutatedAnchor, expectedCode)=>{
+            try{
+              gate.issue({commitment:COMMITMENT,action:ACTION,anchor:mutatedAnchor,anchorVerifierPublicKeyPem:anchorVerifier.publicKeyPem,nonce:`negative-${name}`});
+              throw new Error(`negative accepted: ${name}`);
+            }catch(e){
+              if(e instanceof Error && e.message.startsWith('negative accepted:')) throw e;
+              negativeControls[name]={rejected:true,code:e.code||'ERROR'};
+              if(expectedCode && (e.code||'')!==expectedCode) throw new Error(`${name}: expected ${expectedCode}, got ${e.code||'ERROR'}`);
+            }
+          };
+
+          // Critical protocol boundary: this ordinary object must never unlock even though
+          // it contains the old RSTA-025 verification_status field.
+          const plainStatusObject={
+            verification_status:'CRYPTOGRAPHICALLY_VERIFIED',
+            core:anchor.core,
+            proof:anchor.proof,
+          };
+          expectIssueReject('ordinary_verification_status_object',plainStatusObject,'ANCHOR_TYPE_INVALID');
+          expectIssueReject('missing_verifier_signature',{...anchor,verifier_signature:undefined},'ANCHOR_PROOF_MATERIAL_MISSING');
+          expectIssueReject('tampered_anchor_core',{...anchor,core:{...anchor.core,round:anchor.core.round+1}},'ANCHOR_PROOF_INVALID');
+          expectIssueReject('tampered_anchor_proof',{...anchor,proof:'00'.repeat(32)},'ANCHOR_PROOF_INVALID');
+          expectIssueReject('tampered_anchor_evidence_hash',{...anchor,evidence_hash:'00'.repeat(32)},'ANCHOR_EVIDENCE_HASH_INVALID');
+          expectIssueReject('tampered_verifier_signature',{...anchor,verifier_signature:'00'.repeat(64)},'ANCHOR_VERIFIER_SIGNATURE_INVALID');
+          expectIssueReject('wrong_verifier_id',{...anchor,verifier_id:'ATTACKER'},'ANCHOR_VERIFIER_ID_MISMATCH');
+
+          const wrongVerifierKeys=generateAnchorVerifierKeyPair();
+          try{
+            gate.issue({commitment:COMMITMENT,action:ACTION,anchor,anchorVerifierPublicKeyPem:wrongVerifierKeys.publicKey.export({type:'spki',format:'pem'}),nonce:'negative-wrong-key'});
+            throw new Error('negative accepted: wrong_verifier_key');
+          }catch(e){
+            if(e.message.startsWith('negative accepted:')) throw e;
+            negativeControls.wrong_verifier_key={rejected:true,code:e.code||'ERROR'};
+            if(e.code!=='ANCHOR_VERIFIER_SIGNATURE_INVALID') throw new Error(`wrong_verifier_key: got ${e.code||'ERROR'}`);
+          }
+
+          // Cross-process / offline protocol check: the signed VerifiedAnchor is independently
+          // consumed by a fresh verifier function, not by the issuer's in-memory object.
+          const serialized=JSON.parse(JSON.stringify(anchor));
+          const offlineRoundTrip=verifyVerifiedAnchorOffline({anchor:serialized,publicKeyPem:anchorVerifier.publicKeyPem,verifierId:'RNCP-ANCHOR-VERIFIER-RSTA026'});
+          if(offlineRoundTrip.decision!=='ACCEPT') throw new Error('serialized VerifiedAnchor failed offline verification');
+
+          const forgedCapability={...token,state:CAPABILITY_STATE.CAPABILITY_UNLOCKED,token_signature:'00'.repeat(64)};
+          const forgeVerdict=gate.verifyCapability(forgedCapability,{commitment:COMMITMENT,action:ACTION});
+          if(forgeVerdict.valid || forgeVerdict.code==='ACCEPT') throw new Error('forged capability bypass accepted');
+
+          let bypassRejected=false;
+          try{ gate.beginExecution({...token,state:CAPABILITY_STATE.CAPABILITY_UNLOCKED,token_signature:'00'.repeat(64)},{commitment:COMMITMENT,action:ACTION}); }
+          catch(e){ bypassRejected=true; }
+          if(!bypassRejected) throw new Error('direct execution bypass accepted');
+
+          const final={
+            rsta:'RSTA-026',
+            status:'PASS',
+            protocol:'Reality -> VerifiedAnchor -> Capability Unlock -> Execution',
+            verified_anchor_type:anchor.type,
+            verified_anchor_version:anchor.version,
+            verifier_id:anchor.verifier_id,
+            baseline:{anchor_verification:anchorOffline,capability_verification:verified,execution:execution.state},
+            negative_controls:negativeControls,
+            offline_round_trip:offlineRoundTrip,
+            invariants:{
+              capability_accepts_only_signed_verified_anchor:true,
+              verification_status_field_is_non_authoritative:true,
+              verified_anchor_proof_binding_required:true,
+              verifier_signature_required:true,
+              pinned_verifier_key_required:true,
+              capability_binds_anchor_identity:true,
+              execution_requires_signed_capability:true,
+              direct_execution_bypass_rejected:bypassRejected,
+              forged_capability_rejected:true,
+              all_negative_controls_rejected:Object.values(negativeControls).every(x=>x.rejected===true),
+            },
+            evidence_hash:crypto.createHash('sha256').update(JSON.stringify({anchor,token,verified,execution,negativeControls,offlineRoundTrip,forgeVerdict,bypassRejected})).digest('hex'),
+          };
+          console.log(JSON.stringify(final,null,2));
+          JS
+
+      - name: Persist verdict
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rsta026-final-verdict.json
+          git commit -m 'rsta: persist RSTA-026 VerifiedAnchor protocol verdict [skip ci]'
+          git push origin HEAD:main
