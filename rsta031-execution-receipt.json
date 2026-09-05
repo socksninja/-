@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 33980882875,
+    "run_id": 33980923463,
     "job": "executor",
-    "head_commit": "9883fb671da4e8f759acaaf4d9e7b31026165e45",
+    "head_commit": "db6df6f6b6997afad8818c0c321eec81b53b7476",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-05T17:25:06.884Z"
+    "generated_at": "2026-09-05T17:25:52.692Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "3de13d7a1df5bb219cad6603f2a4388fe9f9f3e9c70407be1a18d4d4c1e66063"
+    "body_hash": "407727153dbe6c26992ad47fd93d81867825e2cf595c60364abd96e16d64e269"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 238,
-    "html_url": "https://github.com/socksninja/-/issues/238"
+    "issue_number": 252,
+    "html_url": "https://github.com/socksninja/-/issues/252"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "52b7b3a61ed3d96003a1c2806ed226af9c17c7ae8938763e1eb1e950e2c7f511",
-    "request_id": "RSTA-031-REQ-33980882875",
-    "event_id": "RSTA-031-REQ-33980882875:REALITY",
-    "event_hash": "e58a148c978bd5e679497fe1ae2291a5982e9aa652ac08f4d2c6e1fcef6530be"
+    "commitment_hash": "28f5cdf69f1042f722d4ca8adcad66537bdceb79bc0e72a6e1b6314321d5c387",
+    "request_id": "RSTA-031-REQ-33980923463",
+    "event_id": "RSTA-031-REQ-33980923463:REALITY",
+    "event_hash": "8e2dc89d95636bea6d8fc8f5faf4e665d3d8d4e7f6553d3f040eae5c65ba795c"
   },
   "verdict": "PASS",
-  "content_address": "b62068a79d3aa9e332baf78b6183f8f222b97e5248e55baa247e50ba43e81c8d"
+  "content_address": "04613a24c59b3d2a3ed4a83a9cb6c064a6a2f9e7760c37989239bd65c1afcb7e"
 }
