@@ -1,0 +1,17 @@
+{
+  "rsta": "RSTA-036",
+  "status": "PASS",
+  "protocol": "RNCP-PORTABLE-VERIFIER-v1",
+  "adapter_claims": {
+    "adapter_contract_valid": true,
+    "github_actions_adapter_live_read": true,
+    "generic_http_adapter_live_read": true,
+    "adapter_outputs_identical": true,
+    "portable_verifier_accepts_genuine": true,
+    "portable_verifier_rejects_authoritative_tamper": true,
+    "provider_neutral_core_used": true,
+    "vercel_adapter_contract_present": true,
+    "vercel_live_runtime_verified": false
+  },
+  "claim_boundary": "Proves a provider-neutral RNCP verifier can consume the same real receipt through multiple executor adapter implementations and reject authoritative tampering. It does not yet prove a live second cloud runtime such as Vercel executing the adapter; the Vercel adapter is contract-only in this run."
+}
