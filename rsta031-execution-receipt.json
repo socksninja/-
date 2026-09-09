@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 33982711967,
+    "run_id": 34329593297,
     "job": "executor",
-    "head_commit": "853f59ff4a6b433afea0758df2b5569aa1204498",
+    "head_commit": "5cdc4ef71ab1e865e7412f8fcebd5680ef5caa5a",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-05T18:00:58.633Z"
+    "generated_at": "2026-09-09T08:31:55.549Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "3f1b874ffd2a28bf5125ddd1c040b50d2f580811650c3a6e2605886a4171c112"
+    "body_hash": "49b5fdaf1d08cc10ebf752df47918f32b3fb23720efeaf023fa26682924966f8"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 357,
-    "html_url": "https://github.com/socksninja/-/issues/357"
+    "issue_number": 373,
+    "html_url": "https://github.com/socksninja/-/issues/373"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "d53c67c7a8c4062b9985c4552fbdd64e5faad3556800dee6e4789d59572f76ec",
-    "request_id": "RSTA-031-REQ-33982711967",
-    "event_id": "RSTA-031-REQ-33982711967:REALITY",
-    "event_hash": "f9b21deaadaef7566c6f8028e2a350296620b255a29e3ff08dd73c43439acb6a"
+    "commitment_hash": "e923966fd5f1b92868c71621035465b4c171b78b72473175b002458b93cace2a",
+    "request_id": "RSTA-031-REQ-34329593297",
+    "event_id": "RSTA-031-REQ-34329593297:REALITY",
+    "event_hash": "ef63e02b44ef0f6537f405037edac1c2de41f430cbd3e28da0f53e9eba7261db"
   },
   "verdict": "PASS",
-  "content_address": "9e4cc4d23f0ebd99dbcbd2a3ef16f6a497b18d70ddede1a726c267497b725311"
+  "content_address": "0451ae8d8e73c4262d89901bf595d96859078e33f76683ac6ad3469d4eac0b4e"
 }
