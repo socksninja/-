@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 34623544032,
+    "run_id": 34623963411,
     "job": "executor",
-    "head_commit": "de49fbbe7dbe9b061057a8f07c6c10133904dc41",
+    "head_commit": "ae25491723cd901a3550e02bab7821f4547b394f",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-11T16:42:51.816Z"
+    "generated_at": "2026-09-11T16:47:16.720Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "ac2307b174ab0af5ace95019997e8ebe4894eda6b386603da445d6937b96e2ed"
+    "body_hash": "45218b5dae5456220e4cd6990fd8d01ad14f46ebd7247f02ea052674359727b8"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 450,
-    "html_url": "https://github.com/socksninja/-/issues/450"
+    "issue_number": 467,
+    "html_url": "https://github.com/socksninja/-/issues/467"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "468354569cdb7b1e1852f329c50fa48bde46966078a519fa69c87ad07833191a",
-    "request_id": "RSTA-031-REQ-34623544032",
-    "event_id": "RSTA-031-REQ-34623544032:REALITY",
-    "event_hash": "db14eb8ac77fc0c527d36d1b1c320f8292c3f702f1746be35b4dc3bd0945d839"
+    "commitment_hash": "1177bcd568b1f2dbd5554d7b9c3ee26db7baf6d5e49d11dd039af358c3cd74d7",
+    "request_id": "RSTA-031-REQ-34623963411",
+    "event_id": "RSTA-031-REQ-34623963411:REALITY",
+    "event_hash": "1fa7802bdea7d839b08cf781ce0a203c6b1a0198e68e8d69f3af38b9715d4a93"
   },
   "verdict": "PASS",
-  "content_address": "c84efbf4466c2f593a5621b2a2c0e803e8d2d6488430ca26a21eef168b3e47e2"
+  "content_address": "b5514c9e4bdede472edd97327619036d350816ea71703adab688a249bf903187"
 }
