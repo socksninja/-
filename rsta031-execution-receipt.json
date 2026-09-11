@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 34624193239,
+    "run_id": 34627680146,
     "job": "executor",
-    "head_commit": "e8ee217d967a6f6b245c64fdc4df516d11fded31",
+    "head_commit": "ae51dccbb3b85a455062902dc31699c6c86e1ea3",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-11T16:49:45.532Z"
+    "generated_at": "2026-09-11T17:26:37.568Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "078be7be8e94fbcfbe595f9f5f08d8a97ed82803a54c18f3126ac700b0e36de2"
+    "body_hash": "1294a0b7909fb2acee88a7e78abefe6e840cc389d059036fb032c3af26585be6"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 476,
-    "html_url": "https://github.com/socksninja/-/issues/476"
+    "issue_number": 494,
+    "html_url": "https://github.com/socksninja/-/issues/494"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "b2ff3e71b744ba4fc15039aff55d590332ed6f36a07fbd904025f645724ab62b",
-    "request_id": "RSTA-031-REQ-34624193239",
-    "event_id": "RSTA-031-REQ-34624193239:REALITY",
-    "event_hash": "34fd7823b86a85d12dec8b83a029e470434d41910b139da4b1eb3c195e2aff95"
+    "commitment_hash": "1bb14db293c3e80af0b3da8d45837b5662bb3f8a0734e5a6cd133e8a2d912924",
+    "request_id": "RSTA-031-REQ-34627680146",
+    "event_id": "RSTA-031-REQ-34627680146:REALITY",
+    "event_hash": "e9ad2e88294f4cc826d39e260538b7203d0f9236169606540caf084a52d13bef"
   },
   "verdict": "PASS",
-  "content_address": "d2560249510a2dfd258e9b21ff7de7e2972ec661b385fae8e3a945a2e1303d1c"
+  "content_address": "3dbe5591a91963667ec83ddf7bb6ba07c824300d098d3deebe61acaa2f27645c"
 }
