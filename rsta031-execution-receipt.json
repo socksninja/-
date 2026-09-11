@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 34630736253,
+    "run_id": 34630865495,
     "job": "executor",
-    "head_commit": "c4e7c20b1adb13fe43b8fee99b1ecf82c21742d1",
+    "head_commit": "d4fadd06de980683a46293cc6a818202d7dc2466",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-11T17:59:30.746Z"
+    "generated_at": "2026-09-11T18:00:53.229Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "05eaead05080ebd0ba88d3c154f44d743e04f82c7a8c17b423d493e91269fa98"
+    "body_hash": "805e55fc05e6d1971bb4f2d4ba88d508a4a917def0994eb2b20b9f2d981ed9dd"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 581,
-    "html_url": "https://github.com/socksninja/-/issues/581"
+    "issue_number": 588,
+    "html_url": "https://github.com/socksninja/-/issues/588"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "4900980e1da15cf5c28b941b7c8c96b9ea4a3307a2076827e61c2fea02710e3c",
-    "request_id": "RSTA-031-REQ-34630736253",
-    "event_id": "RSTA-031-REQ-34630736253:REALITY",
-    "event_hash": "aded80473c5fa58491c5d342f5be1d64edcad3d92220794185aef4aed5ed707a"
+    "commitment_hash": "890374531a4fecf2955df5b324f2dca209ad78d067f1798fa9227db5dc42949b",
+    "request_id": "RSTA-031-REQ-34630865495",
+    "event_id": "RSTA-031-REQ-34630865495:REALITY",
+    "event_hash": "b28667163f8cb32f2b3cdbe072d285bbebd52f551c1be11f607cba5436037227"
   },
   "verdict": "PASS",
-  "content_address": "7a674cc2b54d502c1267407bfad86cf5684cd76ba49cfff70910133daf30a377"
+  "content_address": "645eeb4149a9e0bc19c084142a3bd34bfe19c303b371972d8214b4235bf49907"
 }
