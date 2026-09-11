@@ -1,22 +1,22 @@
 {
   "schema": "RNCP-EXTERNAL-REALITY-RECEIPT-v1",
   "protocol": "RNCP-EXTERNAL-EXECUTOR-v1",
-  "request_id": "RSTA-032-REQ-34630136614",
+  "request_id": "RSTA-032-REQ-34630736233",
   "executor_id": "EXTERNAL-GITHUB-EXECUTOR",
-  "commitment_hash": "ba32b12e9f3639d5ff7581e83c579607874f5a7a20b8ad7202cdd704cd74bad7",
+  "commitment_hash": "474dd8155cd0d4e99df8196b9a8dc81a4d8993fd14c2550a0e457b94c9ca1bc8",
   "action": "CREATE_GITHUB_ISSUE",
   "request_target": {
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "d642f1413eab9bdc64a4fcd681a2362ff6e26441ab924c5687b000ec77b57b82"
+    "body_hash": "649977a9b76c80b1ea417b0248598a53ec0adc7b2c1714ba399466c06409676e"
   },
   "external_observation": {
     "status": 201,
-    "response_hash": "858bd12f93aef44e6296fe9decca01ca055c837007cb454f938c38be0c9ecbf9"
+    "response_hash": "b34147130edc62c3553738c91b2ad0a6992765f339e6742457d3f92da593cfa0"
   },
-  "executor_attestation_hash": "f298c849f57c14530be113cccc5545eae35018219845138eac3db2292c8f3c72",
-  "observed_at": "2026-09-11T17:52:53.627Z",
-  "event_id": "RSTA-032-REQ-34630136614:REALITY",
-  "event_hash": "6187529a073a381accfbb9ef233a3e8e62d740c409c2665de98af818f7567101",
-  "executor_signature": "2JI8W0-HjqFA65Hh_TWP5MpdgikheCF2DTcG_4aWeywJhlBNDl2WQIgD1wCqGSISyEhQTSAYLjFMhDMfGiZLDg"
+  "executor_attestation_hash": "3eb1dd2a2837758cd0c9d854b707147dd2a207da4dccf55c368249eef0e483cc",
+  "observed_at": "2026-09-11T17:59:29.594Z",
+  "event_id": "RSTA-032-REQ-34630736233:REALITY",
+  "event_hash": "7efc3e292c586dfff71bd2fc0296104e2cc6013ff0357e675cc3f2bacf92ee57",
+  "executor_signature": "Uv8HmVo4x55_Ue0Bduer57JKdjsY1OH65KdpVM2_JSh14sIWmjnc55eGIph1QKmRnmRGdOOiiqq0p6qkvcxqBg"
 }
