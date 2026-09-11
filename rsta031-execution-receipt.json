@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 34623071703,
+    "run_id": 34623544032,
     "job": "executor",
-    "head_commit": "9dec7793846d2095a08560bd14d78347e91f6937",
+    "head_commit": "de49fbbe7dbe9b061057a8f07c6c10133904dc41",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-11T16:37:53.231Z"
+    "generated_at": "2026-09-11T16:42:51.816Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "79443dff3a51f15b2dd1ba3a44c34a69c3c43651e700a28477a759bbad691d45"
+    "body_hash": "ac2307b174ab0af5ace95019997e8ebe4894eda6b386603da445d6937b96e2ed"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 443,
-    "html_url": "https://github.com/socksninja/-/issues/443"
+    "issue_number": 450,
+    "html_url": "https://github.com/socksninja/-/issues/450"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "38855d07e4bbd7d52ce0926875665f3d4e0a9ad945390f0a3b994f951b27eec3",
-    "request_id": "RSTA-031-REQ-34623071703",
-    "event_id": "RSTA-031-REQ-34623071703:REALITY",
-    "event_hash": "18a56f39120568a00e45ab3cee3686afd543e9c6adaedada306774c10d453600"
+    "commitment_hash": "468354569cdb7b1e1852f329c50fa48bde46966078a519fa69c87ad07833191a",
+    "request_id": "RSTA-031-REQ-34623544032",
+    "event_id": "RSTA-031-REQ-34623544032:REALITY",
+    "event_hash": "db14eb8ac77fc0c527d36d1b1c320f8292c3f702f1746be35b4dc3bd0945d839"
   },
   "verdict": "PASS",
-  "content_address": "e64cffbbb77d271ca4599c95e00ccd7414d362d9a9bf33fca4c59eaf4f958d44"
+  "content_address": "c84efbf4466c2f593a5621b2a2c0e803e8d2d6488430ca26a21eef168b3e47e2"
 }
