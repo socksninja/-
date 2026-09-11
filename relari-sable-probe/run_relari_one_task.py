@@ -26,7 +26,7 @@ def snapshot_environment() -> dict[str, object]:
         "git_head": git_head,
         "agent_repo": "relari-ai/agent-examples",
         "agent_app": "apps/langgraph-fin-agent",
-        "agent_mode": "deterministic-fmp-tool-agent",
+        "agent_mode": "deterministic-public-web-tool-agent",
         "python": sys.version.split()[0],
         "github_run_id": os.getenv("GITHUB_RUN_ID", ""),
     }
@@ -34,18 +34,20 @@ def snapshot_environment() -> dict[str, object]:
 
 def assert_external_success(tool: str, result: object) -> None:
     """Refuse silent success when the external tool actually returned an error."""
+    if isinstance(result, str):
+        if result.startswith("Error fetching the webpage:") or result.startswith("Error processing the webpage:"):
+            raise SystemExit(f"{tool} returned external error: {result}")
+        return
     if not isinstance(result, dict):
-        raise SystemExit(f"{tool} returned a non-dict result; refusing success claim")
+        raise SystemExit(f"{tool} returned an unsupported result type; refusing success claim")
     if result.get("error"):
         raise SystemExit(f"{tool} returned external error: {result['error']}")
 
 
 def main() -> None:
-    # OpenAI is deliberately not part of this probe. We only need FMP for the
-    # live external tool calls that create independently observable evidence.
-    if not os.getenv("FMP_API_KEY"):
-        raise SystemExit("FMP_API_KEY is missing")
-
+    # OpenAI and FMP are deliberately not part of this probe. The purpose here is
+    # to validate the third-party Relari runtime against a real external network
+    # tool without depending on a paid/legacy provider credential.
     WORK.mkdir(parents=True, exist_ok=True)
     if not (WORK / "agent-examples" / ".git").exists():
         run(["git", "clone", "--depth", "1", "https://github.com/relari-ai/agent-examples.git", str(WORK / "agent-examples")])
@@ -56,62 +58,51 @@ def main() -> None:
     from sable_capture_v09 import SableCapture, write_envelope
 
     sys.path.insert(0, str(APP))
-    from langgraph_fin_agent.tools import get_stock_price, get_company_profile
+    from langgraph_fin_agent.tools import read_webpage
 
     capture = SableCapture(
-        agent_name="relari-fmp-tool-agent",
+        agent_name="relari-public-web-tool-agent",
         agent_version=str(snapshot_environment()["git_head"]),
         framework="Relari agent-examples toolset",
         framework_version="repository-pinned-runtime",
-        adapter="external-probe/fmp-tool-policy/0.2",
+        adapter="external-probe/public-web-tool-policy/0.3",
     )
 
-    query = "Compare the current stock price and company profile for AAPL, then give me a concise one-paragraph answer."
+    query = "Read the public IANA Example Domains page and confirm that it is the Example Domains page."
+    target_url = "https://www.iana.org/help/example-domains"
     before = snapshot_environment()
 
     steps = []
-    price_before = snapshot_environment()
-    price = get_stock_price.invoke({"symbol": "AAPL"})
-    price_after = snapshot_environment()
-    capture.call("get_stock_price", {"symbol": "AAPL"}, repr(price), price_before, price_after)
-    steps.append(("get_stock_price", price))
-    assert_external_success("get_stock_price", price)
+    web_before = snapshot_environment()
+    page = read_webpage.invoke({"url": target_url})
+    web_after = snapshot_environment()
+    capture.call("read_webpage", {"url": target_url}, repr(page), web_before, web_after)
+    steps.append(("read_webpage", page))
+    assert_external_success("read_webpage", page)
 
-    profile_before = snapshot_environment()
-    profile = get_company_profile.invoke({"symbol": "AAPL"})
-    profile_after = snapshot_environment()
-    capture.call("get_company_profile", {"symbol": "AAPL"}, repr(profile), profile_before, profile_after)
-    steps.append(("get_company_profile", profile))
-    assert_external_success("get_company_profile", profile)
+    if not isinstance(page, str) or "Example Domains" not in page:
+        raise SystemExit("External evidence incomplete: expected IANA Example Domains marker not found")
 
     after = snapshot_environment()
-    company = profile.get("companyName") or profile.get("companyNameLong") or profile.get("symbol", "AAPL")
-    price_value = price.get("price")
-    sector = profile.get("sector")
-    industry = profile.get("industry")
-    if price_value is None or sector is None or industry is None:
-        raise SystemExit(
-            "External evidence incomplete: required financial fields are missing; refusing to emit claimed success"
-        )
-
     final_report = (
-        f"{company} (AAPL) has a current quoted price of {price_value}. "
-        f"Its profile lists sector={sector!r} and industry={industry!r}."
+        "Relari's real read_webpage tool successfully reached the public IANA Example Domains page "
+        "and the returned content contained the expected 'Example Domains' marker."
     )
 
     row = capture.envelope(
-        task_id="relari-fmp-tool-agent-001",
+        task_id="relari-public-web-tool-agent-001",
         goal=query,
         claimed_status="success",
         final_report=final_report,
         environment={"before": before, "after": after},
         agent_metadata={
-            "name": "relari-fmp-tool-agent",
-            "mode": "deterministic-tool-policy",
+            "name": "relari-public-web-tool-agent",
+            "mode": "deterministic-public-web-tool",
             "source_repository": "https://github.com/relari-ai/agent-examples",
             "source_app": "apps/langgraph-fin-agent",
             "source_commit": before["git_head"],
-            "external_service": "Financial Modeling Prep",
+            "external_service": "IANA",
+            "external_url": target_url,
             "external_tool_calls": len(steps),
         },
     )
