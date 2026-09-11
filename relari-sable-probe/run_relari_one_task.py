@@ -32,6 +32,14 @@ def snapshot_environment() -> dict[str, object]:
     }
 
 
+def assert_external_success(tool: str, result: object) -> None:
+    """Refuse silent success when the external tool actually returned an error."""
+    if not isinstance(result, dict):
+        raise SystemExit(f"{tool} returned a non-dict result; refusing success claim")
+    if result.get("error"):
+        raise SystemExit(f"{tool} returned external error: {result['error']}")
+
+
 def main() -> None:
     # OpenAI is deliberately not part of this probe. We only need FMP for the
     # live external tool calls that create independently observable evidence.
@@ -55,46 +63,37 @@ def main() -> None:
         agent_version=str(snapshot_environment()["git_head"]),
         framework="Relari agent-examples toolset",
         framework_version="repository-pinned-runtime",
-        adapter="external-probe/fmp-tool-policy/0.1",
+        adapter="external-probe/fmp-tool-policy/0.2",
     )
 
     query = "Compare the current stock price and company profile for AAPL, then give me a concise one-paragraph answer."
     before = snapshot_environment()
 
-    # A real external tool-using agent policy: inspect the task, select the two
-    # required financial tools, execute them against the live FMP service, then
-    # synthesize a final report. This keeps the external-evidence path independent
-    # of the blocked OpenAI credential flow.
     steps = []
     price_before = snapshot_environment()
     price = get_stock_price.invoke({"symbol": "AAPL"})
     price_after = snapshot_environment()
-    capture.call(
-        "get_stock_price",
-        {"symbol": "AAPL"},
-        repr(price),
-        price_before,
-        price_after,
-    )
+    capture.call("get_stock_price", {"symbol": "AAPL"}, repr(price), price_before, price_after)
     steps.append(("get_stock_price", price))
+    assert_external_success("get_stock_price", price)
 
     profile_before = snapshot_environment()
     profile = get_company_profile.invoke({"symbol": "AAPL"})
     profile_after = snapshot_environment()
-    capture.call(
-        "get_company_profile",
-        {"symbol": "AAPL"},
-        repr(profile),
-        profile_before,
-        profile_after,
-    )
+    capture.call("get_company_profile", {"symbol": "AAPL"}, repr(profile), profile_before, profile_after)
     steps.append(("get_company_profile", profile))
+    assert_external_success("get_company_profile", profile)
 
     after = snapshot_environment()
-    company = profile.get("companyName") or profile.get("companyNameLong") or profile.get("symbol", "AAPL") if isinstance(profile, dict) else "AAPL"
-    price_value = price.get("price") if isinstance(price, dict) else None
-    sector = profile.get("sector") if isinstance(profile, dict) else None
-    industry = profile.get("industry") if isinstance(profile, dict) else None
+    company = profile.get("companyName") or profile.get("companyNameLong") or profile.get("symbol", "AAPL")
+    price_value = price.get("price")
+    sector = profile.get("sector")
+    industry = profile.get("industry")
+    if price_value is None or sector is None or industry is None:
+        raise SystemExit(
+            "External evidence incomplete: required financial fields are missing; refusing to emit claimed success"
+        )
+
     final_report = (
         f"{company} (AAPL) has a current quoted price of {price_value}. "
         f"Its profile lists sector={sector!r} and industry={industry!r}."
