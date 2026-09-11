@@ -14,6 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Checkout SABLE verifier
+        uses: actions/checkout@v4
+        with:
+          repository: socksninja/sable-agent-reliability
+          path: .sable
+          fetch-depth: 1
+
       - name: Generate shared portable commitment
         run: |
           node > rsta037-commitment.json <<'JS'
