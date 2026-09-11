@@ -21,6 +21,13 @@ jobs:
           path: .sable
           fetch-depth: 1
 
+      - name: Checkout Relari agent examples
+        uses: actions/checkout@v4
+        with:
+          repository: relari-ai/agent-examples
+          path: .relari-work/agent-examples
+          fetch-depth: 1
+
       - name: Set up Python 3.11 for Relari probe
         uses: actions/setup-python@v5
         with:
