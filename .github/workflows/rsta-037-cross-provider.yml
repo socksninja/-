@@ -68,7 +68,8 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install poetry
-          poetry run python relari-sable-probe/run_relari_one_task.py
+          cd .relari-work/agent-examples/apps/langgraph-fin-agent
+          poetry run python "$GITHUB_WORKSPACE/relari-sable-probe/run_relari_one_task.py"
 
       - name: Validate and normalize Relari SABLE submission
         run: |
