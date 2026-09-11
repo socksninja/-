@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 34622896822,
+    "run_id": 34623071703,
     "job": "executor",
-    "head_commit": "625cd336a5ab003e79f6554c8a2ee1da8cfe2511",
+    "head_commit": "9dec7793846d2095a08560bd14d78347e91f6937",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-11T16:35:59.032Z"
+    "generated_at": "2026-09-11T16:37:53.231Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "34c20261b3450fa533c0435f295141e318d9eda81b4b06499a01c38f49ac3245"
+    "body_hash": "79443dff3a51f15b2dd1ba3a44c34a69c3c43651e700a28477a759bbad691d45"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 432,
-    "html_url": "https://github.com/socksninja/-/issues/432"
+    "issue_number": 443,
+    "html_url": "https://github.com/socksninja/-/issues/443"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "9acea6efc43447cbba6188149272cd9a59b24316c11c502aec46a0365b4b89ca",
-    "request_id": "RSTA-031-REQ-34622896822",
-    "event_id": "RSTA-031-REQ-34622896822:REALITY",
-    "event_hash": "084918ce9a5846a0bcfb68e0c18386e0dbf19ba3ee8d2536d118b9263fbf93af"
+    "commitment_hash": "38855d07e4bbd7d52ce0926875665f3d4e0a9ad945390f0a3b994f951b27eec3",
+    "request_id": "RSTA-031-REQ-34623071703",
+    "event_id": "RSTA-031-REQ-34623071703:REALITY",
+    "event_hash": "18a56f39120568a00e45ab3cee3686afd543e9c6adaedada306774c10d453600"
   },
   "verdict": "PASS",
-  "content_address": "97552afe9a829808cdd899975e78e090f9a38cc861811ce24d27faeba48ffd97"
+  "content_address": "e64cffbbb77d271ca4599c95e00ccd7414d362d9a9bf33fca4c59eaf4f958d44"
 }
