@@ -1,0 +1,16 @@
+{
+  "rsta": "RSTA-037",
+  "run_id": 34622880714,
+  "verdict": "PASS",
+  "content_address": "e643361a43b652afd8449708807c2f4538b9e3dd64e4f59bfb7077aa39497e34",
+  "checks": {
+    "shared_commitment_hash": true,
+    "github_real_external_action": true,
+    "github_receipt_accepted": true,
+    "vercel_live_executor_accepted": true,
+    "same_portable_verifier_core": true,
+    "provider_identities_distinct": true,
+    "tampered_receipt_rejected": true,
+    "replay_rejected": true
+  }
+}
