@@ -1,7 +1,9 @@
-name: Relari → SABLE external evidence
+name: SABLE External Live Probe
 
 on:
   push:
+    branches:
+      - main
     paths:
       - 'relari-sable-probe/**'
       - '.github/workflows/relari-sable-external.yml'
@@ -11,21 +13,21 @@ permissions:
   contents: read
 
 jobs:
-  external-verification:
+  probe:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Checkout probe repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Checkout SABLE verifier
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
         with:
           repository: socksninja/sable-agent-reliability
           path: .sable
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
@@ -36,10 +38,9 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
-        run: |
-          python relari-sable-probe/run_relari_one_task.py
+        run: python relari-sable-probe/run_relari_one_task.py
 
-      - name: Validate and normalize SABLE submission
+      - name: Validate SABLE submission
         run: |
           test -s artifacts/submission-v09.jsonl
           python .sable/trace_submit_v09.py \
@@ -61,13 +62,14 @@ jobs:
                       'size': p.stat().st_size,
                   })
           (root / 'sable-evidence-manifest.json').write_text(
-              json.dumps({'schema_version':'sable.evidence_manifest.v0.1','files':files}, indent=2) + '\n',
+              json.dumps({'schema_version': 'sable.evidence_manifest.v0.1', 'files': files}, indent=2) + '\n',
               encoding='utf-8',
           )
           PY
 
-      - name: Upload external evidence
-        uses: actions/upload-artifact@v7
+      - name: Upload SABLE evidence
+        uses: actions/upload-artifact@v4
         with:
           name: sable-external-evidence-${{ github.run_id }}
           path: artifacts
+          if-no-files-found: error
