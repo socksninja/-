@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 34629187758,
+    "run_id": 34629586000,
     "job": "executor",
-    "head_commit": "65779d43409c0b60d3c0b6a46870ae2a45a4ba25",
+    "head_commit": "1eedb44c01786817bd2a04871fec839ed2bd1a2c",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-11T17:42:36.719Z"
+    "generated_at": "2026-09-11T17:46:55.830Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "1d4199ec57ad3899e27b5223a74887b0c31d6abd556a5808df8bf9fd042a4ba4"
+    "body_hash": "20d1fcd98fb28a3fd514f862c3b0645efc2abf44ce0d4bb19653211ad0933df6"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 547,
-    "html_url": "https://github.com/socksninja/-/issues/547"
+    "issue_number": 555,
+    "html_url": "https://github.com/socksninja/-/issues/555"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "b57473528957fd6125321ed3fdeec19447451a3b2cca425132326df861c74052",
-    "request_id": "RSTA-031-REQ-34629187758",
-    "event_id": "RSTA-031-REQ-34629187758:REALITY",
-    "event_hash": "d52a2783be382210222acef73b2c8716eb75d4ea9d276f603bbb953fd5917bf1"
+    "commitment_hash": "0af6b01d6d5102462e9137ef9dc2b373e8c81f2099b833010c0c8528a66c5d70",
+    "request_id": "RSTA-031-REQ-34629586000",
+    "event_id": "RSTA-031-REQ-34629586000:REALITY",
+    "event_hash": "4caa0656c2ba2d5d8f8945876d9eecc308b05b6dd95a3865152049f490831a73"
   },
   "verdict": "PASS",
-  "content_address": "d7cf4345174f71030d02179399ac1d1e274d890c88dcb93f7cf52dd3d78d040b"
+  "content_address": "ec35bd4a422c436b0ec4049fa58e06ad3babe1537960b39d218b33bbc31121c1"
 }
