@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 34627680146,
+    "run_id": 34627756437,
     "job": "executor",
-    "head_commit": "ae51dccbb3b85a455062902dc31699c6c86e1ea3",
+    "head_commit": "960c284722da804da518e07773451daf06bc5b1c",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-11T17:26:37.568Z"
+    "generated_at": "2026-09-11T17:27:24.858Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "1294a0b7909fb2acee88a7e78abefe6e840cc389d059036fb032c3af26585be6"
+    "body_hash": "f8d792acb9fe35b41d1aed8ba384a2414ee898493b3dc5a77faa1d18ff5b6121"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 494,
-    "html_url": "https://github.com/socksninja/-/issues/494"
+    "issue_number": 506,
+    "html_url": "https://github.com/socksninja/-/issues/506"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "1bb14db293c3e80af0b3da8d45837b5662bb3f8a0734e5a6cd133e8a2d912924",
-    "request_id": "RSTA-031-REQ-34627680146",
-    "event_id": "RSTA-031-REQ-34627680146:REALITY",
-    "event_hash": "e9ad2e88294f4cc826d39e260538b7203d0f9236169606540caf084a52d13bef"
+    "commitment_hash": "563e9323565fa239227469acc076f8d2e1d6bce9e7a24f12036a1159013cfe97",
+    "request_id": "RSTA-031-REQ-34627756437",
+    "event_id": "RSTA-031-REQ-34627756437:REALITY",
+    "event_hash": "d5f3beab108fdc696155de3440dc27713b86af8b4446f4d5657bf3bd71dc7a87"
   },
   "verdict": "PASS",
-  "content_address": "3dbe5591a91963667ec83ddf7bb6ba07c824300d098d3deebe61acaa2f27645c"
+  "content_address": "94ac91e427bcb22ba9f0c5fed3d95ecd4a85126ac70565376c8d7e49630a2b56"
 }
