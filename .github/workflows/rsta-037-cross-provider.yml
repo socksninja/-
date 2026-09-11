@@ -68,7 +68,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install poetry
-          python relari-sable-probe/run_relari_one_task.py
+          poetry run python relari-sable-probe/run_relari_one_task.py
 
       - name: Validate and normalize Relari SABLE submission
         run: |
