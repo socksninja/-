@@ -73,3 +73,5 @@ jobs:
           name: sable-external-evidence-${{ github.run_id }}
           path: artifacts
           if-no-files-found: error
+
+# Explicit push-trigger marker for the live Relari probe.
