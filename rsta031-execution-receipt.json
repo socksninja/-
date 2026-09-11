@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 34629908301,
+    "run_id": 34630136680,
     "job": "executor",
-    "head_commit": "8cefeb548b7df9af8b44c6510c1afeb51efbbdaf",
+    "head_commit": "c4aaa6749c01a41c9bddae10466f0858c7c2e03c",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-11T17:50:27.754Z"
+    "generated_at": "2026-09-11T17:52:56.127Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "75fc361c16314b21fcb2f5784e71ba7d6fa81afd3ce2fa9c7ad59f99e784bd50"
+    "body_hash": "5fc10c463234b5de6e08cdf8822b25831690b18bc1f2977fdac94278f14b3abb"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 564,
-    "html_url": "https://github.com/socksninja/-/issues/564"
+    "issue_number": 574,
+    "html_url": "https://github.com/socksninja/-/issues/574"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "8ddc735998824f75b507ddddccc31aa02635bdf54ddf6e56bb0a13efa2572b6c",
-    "request_id": "RSTA-031-REQ-34629908301",
-    "event_id": "RSTA-031-REQ-34629908301:REALITY",
-    "event_hash": "7f573fc0ff26819a893a4a9b15078a28116b1ad856d0d96d3ada60e9de616fd6"
+    "commitment_hash": "51459c6321e04e1e5b92d8db9fe2600fa28001dd87ff9daf22c884fd70cb7937",
+    "request_id": "RSTA-031-REQ-34630136680",
+    "event_id": "RSTA-031-REQ-34630136680:REALITY",
+    "event_hash": "a377ad03d67e013c20ba66522d0a00206f2fb85e4e38c534de28f441cafeef56"
   },
   "verdict": "PASS",
-  "content_address": "0d896c33755403e64cb12ac2712baf640d44288a4d313c8462d5e5f8ca320c19"
+  "content_address": "6933a53c66bb4bbfa1218b5b84514694c7debc3b7807d3dceb359f5a8de07058"
 }
