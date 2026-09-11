@@ -34,9 +34,8 @@ jobs:
       - name: Install Poetry
         run: python -m pip install poetry
 
-      - name: Run real Relari agent and capture SABLE submission
+      - name: Run external FMP tool agent and capture SABLE submission
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
         run: python relari-sable-probe/run_relari_one_task.py
 
@@ -74,4 +73,4 @@ jobs:
           path: artifacts
           if-no-files-found: error
 
-# Explicit push-trigger marker for the live Relari probe.
+# Explicit push-trigger marker for the live external probe.
