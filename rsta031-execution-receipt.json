@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 34629120485,
+    "run_id": 34629187758,
     "job": "executor",
-    "head_commit": "ca779adc10b181fbbe05af591f98fc7b642f743a",
+    "head_commit": "65779d43409c0b60d3c0b6a46870ae2a45a4ba25",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-11T17:41:57.365Z"
+    "generated_at": "2026-09-11T17:42:36.719Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "701cdc921bbc971c375a465d75e7ca9601c65582419ab04244b47521a6b959f9"
+    "body_hash": "1d4199ec57ad3899e27b5223a74887b0c31d6abd556a5808df8bf9fd042a4ba4"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 541,
-    "html_url": "https://github.com/socksninja/-/issues/541"
+    "issue_number": 547,
+    "html_url": "https://github.com/socksninja/-/issues/547"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "ce11a53d3cb9169349c572501b75b017182aa5f5ea5529c04f67183e5b011bb9",
-    "request_id": "RSTA-031-REQ-34629120485",
-    "event_id": "RSTA-031-REQ-34629120485:REALITY",
-    "event_hash": "6f5612f80a406ff75f6c01ee155132961b02460b8e5ea9b2f6803023a6f8b95b"
+    "commitment_hash": "b57473528957fd6125321ed3fdeec19447451a3b2cca425132326df861c74052",
+    "request_id": "RSTA-031-REQ-34629187758",
+    "event_id": "RSTA-031-REQ-34629187758:REALITY",
+    "event_hash": "d52a2783be382210222acef73b2c8716eb75d4ea9d276f603bbb953fd5917bf1"
   },
   "verdict": "PASS",
-  "content_address": "58d8062860a209495a6ff04ae2ca94701703c0997c8f8343b74b39f79f959028"
+  "content_address": "d7cf4345174f71030d02179399ac1d1e274d890c88dcb93f7cf52dd3d78d040b"
 }
