@@ -14,6 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Checkout SABLE verifier
+        uses: actions/checkout@v4
+        with:
+          repository: socksninja/sable-agent-reliability
+          path: .sable
+          fetch-depth: 1
+
       - name: Generate fixed portable commitment
         run: |
           node > rsta038-commitment.json <<'JS'
@@ -35,6 +42,51 @@ jobs:
           body="RNCP RSTA-038 real side effect\ncommitment_id=${id}\nprovider=github-actions"
           gh api "repos/${GITHUB_REPOSITORY}/issues" -f title="RSTA-038 REALITY ${id}" -f body="$body" > github-action.json
           cat github-action.json
+
+      - name: Execute real Relari agent and capture SABLE submission
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          set -euo pipefail
+          python -m pip install poetry
+          python relari-sable-probe/run_relari_one_task.py
+
+      - name: Validate and normalize Relari SABLE submission
+        run: |
+          set -euo pipefail
+          test -s artifacts/submission-v09.jsonl
+          test -f .sable/trace_submit_v09.py
+          python .sable/trace_submit_v09.py \
+            --input artifacts/submission-v09.jsonl \
+            --output artifacts/sable-trace-v05.jsonl
+
+      - name: Build SABLE evidence manifest
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root = Path('artifacts')
+          files = []
+          for p in sorted(root.rglob('*')):
+              if p.is_file():
+                  files.append({
+                      'path': str(p.relative_to(root)),
+                      'sha256': hashlib.sha256(p.read_bytes()).hexdigest(),
+                      'size': p.stat().st_size,
+                  })
+          (root / 'sable-evidence-manifest.json').write_text(
+              json.dumps({'schema_version':'sable.evidence_manifest.v0.1','files':files}, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          PY
+
+      - name: Upload Relari SABLE external evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: sable-relari-external-evidence-${{ github.run_id }}
+          path: artifacts
+          if-no-files-found: error
 
       - name: Vercel provider external side effect diagnostics
         env:
