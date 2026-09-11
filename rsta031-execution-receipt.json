@@ -4,12 +4,12 @@
   "execution": {
     "provider": "github-actions",
     "workflow": "RSTA-031 Executor Policy Boundary",
-    "run_id": 34629586000,
+    "run_id": 34629908301,
     "job": "executor",
-    "head_commit": "1eedb44c01786817bd2a04871fec839ed2bd1a2c",
+    "head_commit": "8cefeb548b7df9af8b44c6510c1afeb51efbbdaf",
     "event": "push",
     "ref": "refs/heads/main",
-    "generated_at": "2026-09-11T17:46:55.830Z"
+    "generated_at": "2026-09-11T17:50:27.754Z"
   },
   "assertions": {
     "commitment_verified": true,
@@ -28,7 +28,7 @@
     "action": "CREATE_GITHUB_ISSUE",
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
-    "body_hash": "20d1fcd98fb28a3fd514f862c3b0645efc2abf44ce0d4bb19653211ad0933df6"
+    "body_hash": "75fc361c16314b21fcb2f5784e71ba7d6fa81afd3ce2fa9c7ad59f99e784bd50"
   },
   "hostile_subject_hint": {
     "method": "POST",
@@ -43,16 +43,16 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 555,
-    "html_url": "https://github.com/socksninja/-/issues/555"
+    "issue_number": 564,
+    "html_url": "https://github.com/socksninja/-/issues/564"
   },
   "chain": {
     "prior_rsta030_content_address": "f82d13fcd03ecc90f15f166e7c469ba004dacd5d1ea7460978572af433b69b83",
-    "commitment_hash": "0af6b01d6d5102462e9137ef9dc2b373e8c81f2099b833010c0c8528a66c5d70",
-    "request_id": "RSTA-031-REQ-34629586000",
-    "event_id": "RSTA-031-REQ-34629586000:REALITY",
-    "event_hash": "4caa0656c2ba2d5d8f8945876d9eecc308b05b6dd95a3865152049f490831a73"
+    "commitment_hash": "8ddc735998824f75b507ddddccc31aa02635bdf54ddf6e56bb0a13efa2572b6c",
+    "request_id": "RSTA-031-REQ-34629908301",
+    "event_id": "RSTA-031-REQ-34629908301:REALITY",
+    "event_hash": "7f573fc0ff26819a893a4a9b15078a28116b1ad856d0d96d3ada60e9de616fd6"
   },
   "verdict": "PASS",
-  "content_address": "ec35bd4a422c436b0ec4049fa58e06ad3babe1537960b39d218b33bbc31121c1"
+  "content_address": "0d896c33755403e64cb12ac2712baf640d44288a4d313c8462d5e5f8ca320c19"
 }
