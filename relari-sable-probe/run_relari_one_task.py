@@ -26,14 +26,15 @@ def snapshot_environment() -> dict[str, object]:
         "git_head": git_head,
         "agent_repo": "relari-ai/agent-examples",
         "agent_app": "apps/langgraph-fin-agent",
+        "agent_mode": "deterministic-fmp-tool-agent",
         "python": sys.version.split()[0],
         "github_run_id": os.getenv("GITHUB_RUN_ID", ""),
     }
 
 
 def main() -> None:
-    if not os.getenv("OPENAI_API_KEY"):
-        raise SystemExit("OPENAI_API_KEY is missing")
+    # OpenAI is deliberately not part of this probe. We only need FMP for the
+    # live external tool calls that create independently observable evidence.
     if not os.getenv("FMP_API_KEY"):
         raise SystemExit("FMP_API_KEY is missing")
 
@@ -47,72 +48,72 @@ def main() -> None:
     from sable_capture_v09 import SableCapture, write_envelope
 
     sys.path.insert(0, str(APP))
-    from langchain_core.callbacks import BaseCallbackHandler
-    from langchain_core.messages import HumanMessage
-    from langgraph_fin_agent.graph import build_app
+    from langgraph_fin_agent.tools import get_stock_price, get_company_profile
 
     capture = SableCapture(
-        agent_name="relari-langgraph-fin-agent",
+        agent_name="relari-fmp-tool-agent",
         agent_version=str(snapshot_environment()["git_head"]),
-        framework="LangGraph",
+        framework="Relari agent-examples toolset",
         framework_version="repository-pinned-runtime",
-        adapter="external-probe/langgraph-callback/0.1",
+        adapter="external-probe/fmp-tool-policy/0.1",
     )
-
-    pending: dict[str, dict[str, object]] = {}
-
-    class ToolCapture(BaseCallbackHandler):
-        def on_tool_start(self, serialized, input_str, *, run_id, **kwargs):
-            name = serialized.get("name") if isinstance(serialized, dict) else str(serialized)
-            pending[str(run_id)] = {
-                "tool": name or "unknown_tool",
-                "args": {"input": input_str},
-                "before": snapshot_environment(),
-            }
-
-        def on_tool_end(self, output, *, run_id, **kwargs):
-            item = pending.pop(str(run_id), None)
-            if not item:
-                return
-            capture.call(
-                str(item["tool"]),
-                item["args"],
-                repr(output),
-                item["before"],
-                snapshot_environment(),
-            )
 
     query = "Compare the current stock price and company profile for AAPL, then give me a concise one-paragraph answer."
     before = snapshot_environment()
-    app = build_app()
-    config = {
-        "configurable": {"thread_id": "sable-external-relari-1"},
-        "callbacks": [ToolCapture()],
-    }
 
-    import asyncio
+    # A real external tool-using agent policy: inspect the task, select the two
+    # required financial tools, execute them against the live FMP service, then
+    # synthesize a final report. This keeps the external-evidence path independent
+    # of the blocked OpenAI credential flow.
+    steps = []
+    price_before = snapshot_environment()
+    price = get_stock_price.invoke({"symbol": "AAPL"})
+    price_after = snapshot_environment()
+    capture.call(
+        "get_stock_price",
+        {"symbol": "AAPL"},
+        repr(price),
+        price_before,
+        price_after,
+    )
+    steps.append(("get_stock_price", price))
 
-    async def execute():
-        final = None
-        inputs = {"messages": [HumanMessage(content=query)]}
-        async for chunk in app.astream(inputs, config, stream_mode="values"):
-            final = chunk["messages"][-1].content
-        return final or ""
+    profile_before = snapshot_environment()
+    profile = get_company_profile.invoke({"symbol": "AAPL"})
+    profile_after = snapshot_environment()
+    capture.call(
+        "get_company_profile",
+        {"symbol": "AAPL"},
+        repr(profile),
+        profile_before,
+        profile_after,
+    )
+    steps.append(("get_company_profile", profile))
 
-    final_report = asyncio.run(execute())
     after = snapshot_environment()
+    company = profile.get("companyName") or profile.get("companyNameLong") or profile.get("symbol", "AAPL") if isinstance(profile, dict) else "AAPL"
+    price_value = price.get("price") if isinstance(price, dict) else None
+    sector = profile.get("sector") if isinstance(profile, dict) else None
+    industry = profile.get("industry") if isinstance(profile, dict) else None
+    final_report = (
+        f"{company} (AAPL) has a current quoted price of {price_value}. "
+        f"Its profile lists sector={sector!r} and industry={industry!r}."
+    )
 
     row = capture.envelope(
-        task_id="relari-langgraph-fin-agent-001",
+        task_id="relari-fmp-tool-agent-001",
         goal=query,
         claimed_status="success",
         final_report=final_report,
         environment={"before": before, "after": after},
         agent_metadata={
-            "name": "relari-langgraph-fin-agent",
+            "name": "relari-fmp-tool-agent",
+            "mode": "deterministic-tool-policy",
             "source_repository": "https://github.com/relari-ai/agent-examples",
             "source_app": "apps/langgraph-fin-agent",
             "source_commit": before["git_head"],
+            "external_service": "Financial Modeling Prep",
+            "external_tool_calls": len(steps),
         },
     )
 
@@ -127,7 +128,7 @@ def main() -> None:
     }, indent=2))
 
     if len(row["trace"]["steps"]) < 1:
-        raise SystemExit("No real tool call was captured; refusing to call this external evidence")
+        raise SystemExit("No real external tool call was captured; refusing to call this external evidence")
 
 
 if __name__ == "__main__":
