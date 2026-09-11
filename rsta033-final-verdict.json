@@ -9,9 +9,9 @@
     "scope": {
       "method": "POST",
       "path": "/repos/socksninja/-/issues",
-      "body_hash": "87c7070277ba921930003bd682db2d39cc925ec1375f4bcbf08f2efd47becb29"
+      "body_hash": "e5738546992b05c82eca81f44212b165403fec3ee2c5dae018d6741e519d9071"
     },
-    "nonce": "34627813292:1"
+    "nonce": "34628217260:1"
   },
   "executor_identity": {
     "decision": "ACCEPT",
@@ -22,20 +22,20 @@
     "protocol": "RNCP-EXECUTOR-IDENTITY-v1",
     "executor_id": "EXTERNAL-GITHUB-EXECUTOR",
     "issuer": "https://token.actions.githubusercontent.com",
-    "token_hash": "bc3b3542d44ddeceb08ef56d680cd00a976d5d79756b1c13eb8ba2b10d8803a2",
-    "claims_hash": "2db7120f9a9d5b29e16f3cbab8205067a8a83fab98e5aed3528114acba8e8a71",
+    "token_hash": "c225ad3182f19a572b50dea5ad0ade3fa60220013c0d73fbcf051418fbd8cc61",
+    "claims_hash": "d3925d5d943b3fe4aa97dfb68c717d32178cd00bee81e113b88291e6c1d88281",
     "claims": {
       "sub": "repo:socksninja/-:ref:refs/heads/main",
       "aud": "rsta-033",
       "repository": "socksninja/-",
       "repository_id": "1087941782",
       "workflow_ref": "socksninja/-/.github/workflows/rsta-033-executor-delegation.yml@refs/heads/main",
-      "workflow_sha": "b6d1fc0732cb93588301e9a46113e06df5ce8906",
+      "workflow_sha": "79afd9e8f72ece0eb1325513979f4dff1bfea939",
       "ref": "refs/heads/main",
       "ref_type": "branch",
       "event_name": "push",
-      "run_id": "34627813292",
-      "check_run_id": "103357091979",
+      "run_id": "34628217260",
+      "check_run_id": "103358417749",
       "runner_environment": "github-hosted"
     }
   },
@@ -44,17 +44,17 @@
     "method": "POST",
     "path": "/repos/socksninja/-/issues",
     "status": 201,
-    "issue_number": 514,
-    "html_url": "https://github.com/socksninja/-/issues/514"
+    "issue_number": 522,
+    "html_url": "https://github.com/socksninja/-/issues/522"
   },
   "chain": {
-    "prior_rsta032_content_address": "48a839d1ab8142eb2b813bb049204da117951995f152dbddb8033c40af21ef22",
-    "commitment_hash": "c3d97ad1a689c646fc5fb4962ab6ad6b2e73555f2f26318fcea949d0ff3b76c1",
-    "delegation_id": "RSTA-033-DELEGATION-34627813292",
-    "delegation_hash": "85a9e6c7db51d982ffbfab9ed2c78cd459a16e206413d4b75e4dc8b3886fee18",
-    "executor_attestation_hash": "368b20073e6e1450760014a9ff5bf55ec71c344f2820b2beceb4de060f0aa3d0",
-    "event_id": "RSTA-033-DELEGATION-34627813292:REALITY",
-    "event_hash": "89917318595f3b58532f2b74e9553066cd192546af68e040afe52e4078ce4875"
+    "prior_rsta032_content_address": "3c75e650bf981b27ae2293cd3adbf6422219f2797ea8a66d0fb427514e7103dc",
+    "commitment_hash": "92604ee532379a037bf39a94420c7c26a30203389384ba61b615e7cb91648e07",
+    "delegation_id": "RSTA-033-DELEGATION-34628217260",
+    "delegation_hash": "dff0c4895a1b5964bfad1f2b0c69e4ad5b6e6f75171eb986d191c1c3dc8522c5",
+    "executor_attestation_hash": "83eb82c357adcfad4591673c5b1596fc51724fc33b4138571164525f3748ffef",
+    "event_id": "RSTA-033-DELEGATION-34628217260:REALITY",
+    "event_hash": "8d7dfc614e9ec4f1945edb2a71c8884bc9a63d7dc027477dc39e6b79512ebec0"
   },
   "guarantees": {
     "commitment_verified": true,
